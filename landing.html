@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen leaf-page">
+
+    <nav class="flex justify-between items-center px-8 lg:px-16 py-6">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-xl bg-theme-sage/25 border border-theme-sage/40 flex items-center justify-center">
+                <svg class="w-6 h-6 text-theme-sage-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            </div>
+            <div>
+                <p class="font-extrabold text-lg text-theme-bark leading-none">Crossly AI</p>
+                <p class="text-xs text-theme-bark-muted leading-none mt-1">Crosswalk Safety</p>
+            </div>
+        </div>
+
+        <div class="hidden md:flex items-center gap-10 font-semibold text-theme-bark-muted">
+            <a href="#" class="hover:text-theme-sage-dark transition-colors">Home</a>
+            <a href="#features" class="hover:text-theme-sage-dark transition-colors">Features</a>
+            <a href="#about" class="hover:text-theme-sage-dark transition-colors">About</a>
+            <a href="#contact" class="hover:text-theme-sage-dark transition-colors">Contact</a>
+        </div>
+
+        <a href="{{ url_for('auth.signup') }}" class="btn-primary px-6 py-3">Get Started</a>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-8 lg:px-16 pt-8 pb-24 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center leaf-page">
+        <div>
+            <h1 class="text-5xl lg:text-6xl font-extrabold text-theme-bark leading-tight mb-6">
+                Smarter Crosswalks<br>
+                <span class="text-theme-sage-dark">Safer</span> Communities
+            </h1>
+            <p class="text-lg text-theme-bark-muted mb-10 max-w-lg leading-relaxed">
+                AI-powered monitoring and analytics to detect risks, prevent accidents, and protect every pedestrian with sharp visual clarity.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 mb-14">
+                <a href="{{ url_for('auth.signup') }}" class="btn-primary px-8 py-3 text-lg">Get Started</a>
+                <a href="#features" class="px-8 py-3 text-lg font-bold text-theme-bark rounded-full border-2 border-theme-bark/15 hover:bg-white transition-all bg-white">Learn More</a>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl" id="features">
+                <div class="leaf-card p-5">
+                    <p class="font-bold text-theme-bark mb-2">AI Detection</p>
+                    <p class="text-sm text-theme-bark-muted">Realtime detection of pedestrians and vehicles with vivid alerts.</p>
+                </div>
+                <div class="leaf-card p-5">
+                    <p class="font-bold text-theme-bark mb-2">Live Analytics</p>
+                    <p class="text-sm text-theme-bark-muted">Clear dashboards with insights that never get lost behind overlays.</p>
+                </div>
+                <div class="leaf-card p-5">
+                    <p class="font-bold text-theme-bark mb-2">Safer Roads</p>
+                    <p class="text-sm text-theme-bark-muted">Structured alerts and visibility designed for fast decision making.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-card p-4">
+            <img src="{{ url_for('static', filename='images/dashboard_hero.png') }}" alt="Crossly AI Illustration" class="dashboard-hero-image">
+        </div>
+    </div>
+</div>
+{% endblock %}

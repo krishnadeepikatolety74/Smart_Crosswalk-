@@ -1,0 +1,101 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Analytics{% endblock %}
+{% block page_subtitle %}<p class="text-sm text-theme-bark-muted mt-1">Detailed insights and trends</p>{% endblock %}
+
+{% block dashboard_content %}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="glass-panel p-5">
+        <p class="text-sm text-theme-bark-muted font-semibold mb-1">Vehicles Today</p>
+        <p class="text-3xl font-black text-theme-bark">{{ total_vehicles }}</p>
+    </div>
+    <div class="glass-panel p-5">
+        <p class="text-sm text-theme-bark-muted font-semibold mb-1">Pedestrians Today</p>
+        <p class="text-3xl font-black text-theme-bark">{{ total_pedestrians }}</p>
+    </div>
+    <div class="glass-panel p-5">
+        <p class="text-sm text-theme-bark-muted font-semibold mb-1">High Risk Events</p>
+        <p class="text-3xl font-black text-theme-terracotta-dark">{{ high_risk }}</p>
+    </div>
+    <div class="glass-panel p-5">
+        <p class="text-sm text-theme-bark-muted font-semibold mb-1">Safe Events</p>
+        <p class="text-3xl font-black text-theme-sage-dark">{{ safe }}</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="glass-panel p-5 lg:col-span-2">
+        <h3 class="text-md font-bold text-theme-bark mb-4">Traffic Volume</h3>
+        <div class="relative h-72">
+            <canvas id="volumeChart"></canvas>
+        </div>
+    </div>
+    <div class="glass-panel p-5 flex flex-col">
+        <h3 class="text-md font-bold text-theme-bark mb-4">Risk Distribution</h3>
+        <div class="relative h-56 flex items-center justify-center">
+            <canvas id="riskChart"></canvas>
+        </div>
+        <div class="mt-4 text-center">
+            <p class="text-sm text-theme-bark-muted font-semibold">Average Speed</p>
+            <p class="text-2xl font-black text-theme-dusty-blue-dark">{{ avg_speed }} <span class="text-sm font-normal">km/h</span></p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+    <div class="glass-panel p-5 flex flex-col justify-between">
+        <h3 class="text-md font-bold text-theme-bark mb-4">Dangerous Crossing Zones (AI Spatial Heatmap)</h3>
+        <div class="flex items-center justify-center flex-1 bg-white/50 rounded-2xl p-2 border border-theme-dusty-blue/15">
+            <img src="data:image/png;base64,{{ heat_map }}" alt="Dangerous Crossing Zones Heatmap" class="max-h-64 object-contain rounded-xl">
+        </div>
+        <p class="text-xs text-theme-bark-muted mt-3">Kernel Density Estimation of historical collision predictions and high-risk encounters.</p>
+    </div>
+    <div class="glass-panel p-5 flex flex-col justify-between">
+        <h3 class="text-md font-bold text-theme-bark mb-4">Recent Velocity Profile Trend (km/h)</h3>
+        <div class="flex items-center justify-center flex-1 bg-white/50 rounded-2xl p-2 border border-theme-dusty-blue/15">
+            <img src="data:image/png;base64,{{ line_chart }}" alt="Recent Speed Trend Chart" class="max-h-64 object-contain rounded-xl">
+        </div>
+        <p class="text-xs text-theme-bark-muted mt-3">Moving-window velocities of vehicles interacting with the active crossing path.</p>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    new Chart(document.getElementById('volumeChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Vehicles', 'Pedestrians'],
+            datasets: [{
+                data: [{{ total_vehicles }}, {{ total_pedestrians }}],
+                backgroundColor: ['#7FA3B5', '#7FA787'],
+                borderRadius: 10,
+                maxBarThickness: 90
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { grid: { color: 'rgba(0,0,0,0.05)' }, beginAtZero: true }, x: { grid: { display: false } } }
+        }
+    });
+
+    const riskData = [{{ high_risk }}, {{ safe }}];
+    const hasRiskData = riskData.some(v => v > 0);
+    new Chart(document.getElementById('riskChart'), {
+        type: 'doughnut',
+        data: {
+            labels: hasRiskData ? ['High Risk', 'Safe'] : ['No data yet'],
+            datasets: [{
+                data: hasRiskData ? riskData : [1],
+                backgroundColor: hasRiskData ? ['#C97B63', '#7FA787'] : ['#DCE9EE'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '65%',
+            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 11 } } } }
+        }
+    });
+});
+</script>
+{% endblock %}

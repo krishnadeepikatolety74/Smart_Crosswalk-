@@ -1,0 +1,542 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-layout animate-fade-in relative overflow-hidden bg-theme-cream">
+
+    <aside class="sidebar h-screen sticky top-0 shadow-[4px_0_24px_rgba(127,167,135,0.1)] bg-white/40 backdrop-blur-3xl border-r border-white/60 relative overflow-hidden flex flex-col">
+        <div class="mb-8 px-3 mt-2 relative z-10 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-theme-sage/25 border border-theme-sage/40 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-theme-sage-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            </div>
+            <div>
+                <p class="font-extrabold text-sm text-theme-bark leading-none">Crossly AI</p>
+                <p class="text-xs text-theme-bark-muted leading-none mt-1">Crosswalk Safety</p>
+            </div>
+        </div>
+        <nav class="flex flex-col gap-2 flex-1 relative z-10">
+            <a href="{{ url_for('main.home') }}" class="sidebar-link font-bold text-gray-600 hover:text-theme-sage-dark transition-colors {% if request.path == url_for('main.home') %}bg-theme-sage/20 text-theme-sage-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-theme-sage/30 rounded-xl{% endif %}">
+                <svg class="w-5 h-5 mr-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                Dashboard
+            </a>
+
+            {% if session.get('role') == 'traffic_authority' or session.get('role') == 'admin' %}
+            <a href="{{ url_for('dashboard.live_camera') }}" class="sidebar-link font-bold text-gray-600 hover:text-theme-sage-dark transition-colors {% if request.path == url_for('dashboard.live_camera') %}bg-theme-sage/20 text-theme-sage-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-theme-sage/30 rounded-xl{% endif %}">
+                <svg class="w-5 h-5 mr-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                Live Camera
+            </a>
+            {% endif %}
+
+            <a href="{{ url_for('dashboard.live_traffic') }}" class="sidebar-link font-bold text-gray-600 hover:text-theme-sage-dark transition-colors {% if request.path == url_for('dashboard.live_traffic') %}bg-theme-sage/20 text-theme-sage-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-theme-sage/30 rounded-xl{% endif %}">
+                <svg class="w-5 h-5 mr-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7l6-3 5.447 2.724A1 1 0 0121 7.618v10.764a1 1 0 01-1.447.894L15 17l-6 3z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7v13M15 4v13"></path></svg>
+                Live Traffic
+            </a>
+
+            <a href="{{ url_for('dashboard.upload_image') }}" class="sidebar-link font-bold text-gray-600 hover:text-theme-sage-dark transition-colors {% if request.path == url_for('dashboard.upload_image') %}bg-theme-sage/20 text-theme-sage-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-theme-sage/30 rounded-xl{% endif %}">
+                <svg class="w-5 h-5 mr-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                Upload Image
+            </a>
+            <a href="{{ url_for('dashboard.upload_video') }}" class="sidebar-link font-bold text-gray-600 hover:text-theme-sage-dark transition-colors {% if request.path == url_for('dashboard.upload_video') %}bg-theme-sage/20 text-theme-sage-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-theme-sage/30 rounded-xl{% endif %}">
+                <svg class="w-5 h-5 mr-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                Upload Video
+            </a>
+
+            {% if session.get('role') == 'admin' %}
+            <a href="{{ url_for('dashboard.analytics') }}" class="sidebar-link font-bold text-gray-600 hover:text-theme-sage-dark transition-colors {% if request.path == url_for('dashboard.analytics') %}bg-theme-sage/20 text-theme-sage-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-theme-sage/30 rounded-xl{% endif %}">
+                <svg class="w-5 h-5 mr-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                Analytics
+            </a>
+            <a href="{{ url_for('dashboard.reports') }}" class="sidebar-link font-bold text-gray-600 hover:text-theme-sage-dark transition-colors {% if request.path == url_for('dashboard.reports') %}bg-theme-sage/20 text-theme-sage-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-theme-sage/30 rounded-xl{% endif %}">
+                <svg class="w-5 h-5 mr-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Reports
+            </a>
+            {% endif %}
+
+            {% if session.get('role') == 'traffic_authority' or session.get('role') == 'admin' %}
+            <a href="{{ url_for('dashboard.history') }}" class="sidebar-link font-bold text-gray-600 hover:text-theme-sage-dark transition-colors {% if request.path == url_for('dashboard.history') %}bg-theme-sage/20 text-theme-sage-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-theme-sage/30 rounded-xl{% endif %}">
+                <svg class="w-5 h-5 mr-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                History
+            </a>
+            {% endif %}
+
+            {% if session.get('role') == 'admin' %}
+            <a href="{{ url_for('dashboard.users') }}" class="sidebar-link font-bold text-gray-600 hover:text-theme-sage-dark transition-colors {% if request.path == url_for('dashboard.users') %}bg-theme-sage/20 text-theme-sage-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-theme-sage/30 rounded-xl{% endif %}">
+                <svg class="w-5 h-5 mr-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4a4 4 0 100 8 4 4 0 000-8zM2 20h20"></path></svg>
+                Users
+            </a>
+            <a href="{{ url_for('dashboard.settings') }}" class="sidebar-link font-bold text-gray-600 hover:text-theme-sage-dark transition-colors {% if request.path == url_for('dashboard.settings') %}bg-theme-sage/20 text-theme-sage-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-theme-sage/30 rounded-xl{% endif %}">
+                <svg class="w-5 h-5 mr-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Settings
+            </a>
+            {% endif %}
+        </nav>
+        <div class="mt-auto relative z-10 bg-white/50 p-3 border-t border-theme-dusty-blue/30">
+            <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-600 font-bold hover:text-red-700 hover:bg-red-50/80">
+                <svg class="w-5 h-5 mr-4 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                Logout
+            </a>
+        </div>
+    </aside>
+
+    <main class="main-content z-10 flex flex-col">
+        <header class="flex justify-between items-center mb-8 bg-white/80 backdrop-blur-md p-5 rounded-2xl shadow-md border border-theme-dusty-blue/30 flex-shrink-0">
+            <div>
+                <h2 class="text-2xl font-black text-theme-bark">{% block page_title %}Dashboard{% endblock %}</h2>
+                {% block page_subtitle %}<p class="text-sm text-theme-bark-muted mt-1">Overview of real-time traffic and safety monitoring</p>{% endblock %}
+            </div>
+            <div class="flex items-center gap-5">
+                <!-- Weather Widget Bubble -->
+                <div id="weather-widget" class="flex items-center gap-3 px-4 py-1.5 rounded-full cursor-pointer transition-all duration-300 bg-white/70 border border-theme-dusty-blue/30 hover:border-theme-sage-dark/50 hover:bg-white/95 hover:scale-[1.03] shadow-sm relative overflow-hidden" onclick="openWeatherPopup()">
+                    <div id="weather-bubble-icon" class="w-8 h-8 flex items-center justify-center flex-shrink-0">
+                        <!-- Dynamic SVG Icon gets injected here -->
+                        <span class="text-lg">⏳</span>
+                    </div>
+                    <div class="flex flex-col text-left leading-none">
+                        <span class="text-[9px] font-bold text-theme-bark-muted tracking-wide uppercase">Hyderabad</span>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span id="weather-bubble-temp" class="text-sm font-black text-theme-bark">--°C</span>
+                            <span id="weather-bubble-label" class="text-[10px] font-bold text-theme-sage-dark capitalize">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="w-10 h-10 rounded-full bg-white/70 border border-theme-dusty-blue/30 flex items-center justify-center text-theme-bark-muted hover:text-theme-sage-dark transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                </button>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-theme-dusty-blue-dark to-theme-dusty-blue flex items-center justify-center text-white font-extrabold shadow-md">
+                        {{ session.get('user', 'U')[0]|upper }}
+                    </div>
+                    <div class="hidden sm:block text-left">
+                        <p class="text-sm font-bold text-theme-bark leading-none">{{ session.get('user', 'Admin') }}</p>
+                        <p class="text-xs text-theme-bark-muted leading-none mt-1 capitalize">{{ session.get('role', 'administrator')|replace('_', ' ') }}</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        {% block dashboard_content %}{% endblock %}
+    </main>
+</div>
+
+<!-- Weather Detail Popup Modal -->
+<div id="weather-popup-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300" onclick="closeWeatherPopup()">
+    <div id="weather-popup-card" class="bg-white/85 backdrop-blur-2xl p-6 rounded-[28px] shadow-glass border border-white/60 w-full max-w-sm mx-4 transform scale-95 opacity-0 transition-all duration-300" onclick="event.stopPropagation()">
+        <!-- Header -->
+        <div class="flex justify-between items-start mb-6">
+            <div>
+                <div class="flex items-center gap-3">
+                    <div id="popup-weather-icon" class="w-10 h-10 flex items-center justify-center"></div>
+                    <div>
+                        <h3 id="popup-weather-label" class="text-lg font-black text-theme-bark leading-none">Sunny</h3>
+                        <p class="text-[10px] text-theme-bark-muted mt-1 font-bold tracking-wide uppercase">Hyderabad, IN</p>
+                    </div>
+                </div>
+            </div>
+            <button onclick="closeWeatherPopup()" class="w-8 h-8 rounded-full bg-white/60 hover:bg-red-50 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors border border-theme-dusty-blue/20">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Main Temp -->
+        <div class="text-center my-6">
+            <h1 id="popup-temp" class="text-5xl font-black text-theme-bark tracking-tighter">32°C</h1>
+            <p class="text-xs text-theme-bark-muted mt-1.5 font-bold">Feels Like <span id="popup-feels-like">35°C</span></p>
+        </div>
+
+        <!-- Details Grid -->
+        <div class="grid grid-cols-2 gap-3.5 mb-6">
+            <div class="bg-white/50 p-3 rounded-2xl border border-theme-dusty-blue/20 text-center shadow-sm">
+                <p class="text-[10px] uppercase font-bold text-theme-bark-muted tracking-wider">Humidity</p>
+                <p id="popup-humidity" class="text-sm font-black text-theme-bark mt-1">61%</p>
+            </div>
+            <div class="bg-white/50 p-3 rounded-2xl border border-theme-dusty-blue/20 text-center shadow-sm">
+                <p class="text-[10px] uppercase font-bold text-theme-bark-muted tracking-wider">Wind Speed</p>
+                <p id="popup-wind" class="text-sm font-black text-theme-bark mt-1">12 km/h</p>
+            </div>
+            <div class="bg-white/50 p-3 rounded-2xl border border-theme-dusty-blue/20 text-center shadow-sm">
+                <p class="text-[10px] uppercase font-bold text-theme-bark-muted tracking-wider">Visibility</p>
+                <p id="popup-visibility" class="text-sm font-black text-theme-bark mt-1">8 km</p>
+            </div>
+            <div class="bg-white/50 p-3 rounded-2xl border border-theme-dusty-blue/20 text-center shadow-sm">
+                <p class="text-[10px] uppercase font-bold text-theme-bark-muted tracking-wider">Pressure</p>
+                <p id="popup-pressure" class="text-sm font-black text-theme-bark mt-1">1008 hPa</p>
+            </div>
+            <div class="bg-white/50 p-3 rounded-2xl border border-theme-dusty-blue/20 shadow-sm col-span-2">
+                <div class="flex justify-between items-center px-2">
+                    <p class="text-[10px] uppercase font-bold text-theme-bark-muted tracking-wider">UV Index</p>
+                    <p id="popup-uv" class="text-xs font-black text-theme-bark">High</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Weather Safety Insight Section -->
+        <div class="bg-theme-sage/10 border border-theme-sage/35 rounded-2xl p-4 mb-5">
+            <h4 class="text-[10px] font-black text-theme-sage-dark uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                AI Safety Advisor
+            </h4>
+            <ul id="popup-ai-insights" class="text-xs text-theme-bark space-y-1.5 list-none pl-0 leading-relaxed font-semibold">
+                <!-- Dynamic safety advice bullet points -->
+            </ul>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center">
+            <p class="text-[9px] text-theme-bark-muted font-bold tracking-wider uppercase">Last Updated: <span id="popup-updated">--:--</span></p>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Weather Icon CSS Animations */
+@keyframes weather-spin {
+    100% { transform: rotate(360deg); }
+}
+@keyframes weather-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+@keyframes weather-drift {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(4px); }
+}
+@keyframes weather-rain {
+    0% { transform: translateY(-3px) scaleY(1); opacity: 0; }
+    50% { opacity: 0.9; }
+    100% { transform: translateY(6px) scaleY(0.8); opacity: 0; }
+}
+@keyframes weather-lightning {
+    0%, 100% { opacity: 0.2; }
+    50%, 55% { opacity: 1; }
+}
+@keyframes weather-mist {
+    0%, 100% { transform: translateX(-3px); opacity: 0.5; }
+    50% { transform: translateX(3px); opacity: 0.9; }
+}
+
+.anim-spin { animation: weather-spin 12s linear infinite; }
+.anim-pulse { animation: weather-pulse 3s ease-in-out infinite; }
+.anim-drift { animation: weather-drift 6s ease-in-out infinite; }
+.anim-rain-1 { animation: weather-rain 1.2s linear infinite; }
+.anim-rain-2 { animation: weather-rain 1.2s linear infinite 0.4s; }
+.anim-rain-3 { animation: weather-rain 1.2s linear infinite 0.8s; }
+.anim-lightning { animation: weather-lightning 2s ease-in-out infinite; }
+.anim-mist-1 { animation: weather-mist 4s ease-in-out infinite; }
+.anim-mist-2 { animation: weather-mist 4s ease-in-out infinite 2s; }
+</style>
+
+<script>
+const HYDERABAD_LAT = "17.3850";
+const HYDERABAD_LON = "78.4867";
+const CACHE_KEY = "crossly_weather_data";
+const CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes cache
+
+// Map WMO Weather Codes to readable weather descriptions, icons & AI Safety Insights
+function getWeatherConfig(code, isDay) {
+    const configs = {
+        0: { // Clear
+            label: "Sunny",
+            icon: `<svg class="w-full h-full text-amber-500" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="5" class="anim-pulse" />
+                <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="anim-spin" style="transform-origin: 12px 12px;" />
+            </svg>`,
+            nightLabel: "Clear",
+            nightIcon: `<svg class="w-full h-full text-indigo-200" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3a9 9 0 109 9 9.75 9.75 0 01-9-9z" class="anim-pulse" />
+                <circle cx="6" cy="6" r="0.5" class="anim-lightning" style="animation-duration: 3s;" />
+                <circle cx="18" cy="8" r="0.5" class="anim-lightning" style="animation-duration: 4s;" />
+            </svg>`,
+            insights: [
+                "✔ Excellent visibility conditions.",
+                "✔ Pedestrian detection operating at maximum accuracy.",
+                "✔ Road surface is completely dry and safe."
+            ]
+        },
+        1: { // Mainly clear
+            label: "Partly Cloudy",
+            icon: `<svg class="w-full h-full" viewBox="0 0 24 24">
+                <circle cx="14" cy="9" r="4" fill="#F59E0B" class="anim-pulse" />
+                <path d="M6 17a3 3 0 013-3h6a3 3 0 013 3 2 2 0 01-2 2H8a2 2 0 01-2-2z" fill="#93C5FD" class="anim-drift" />
+                <path d="M10 16a4 4 0 014-4h2a4 4 0 014 4v1H10v-1z" fill="#DBEAFE" class="anim-drift" />
+            </svg>`,
+            insights: [
+                "✔ High contrast and good visibility.",
+                "✔ Standard pedestrian tracking active.",
+                "✔ Road surface condition: Optimal."
+            ]
+        },
+        2: { // Partly cloudy
+            label: "Partly Cloudy",
+            icon: `<svg class="w-full h-full" viewBox="0 0 24 24">
+                <circle cx="14" cy="9" r="4" fill="#F59E0B" class="anim-pulse" />
+                <path d="M6 17a3 3 0 013-3h6a3 3 0 013 3 2 2 0 01-2 2H8a2 2 0 01-2-2z" fill="#93C5FD" class="anim-drift" />
+                <path d="M10 16a4 4 0 014-4h2a4 4 0 014 4v1H10v-1z" fill="#DBEAFE" class="anim-drift" />
+            </svg>`,
+            insights: [
+                "✔ Visibility is clear and stable.",
+                "✔ Pedestrian detection running normally.",
+                "✔ Safe braking distance maintained."
+            ]
+        },
+        3: { // Overcast
+            label: "Cloudy",
+            icon: `<svg class="w-full h-full text-blue-300" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 17a3 3 0 013-3h6a3 3 0 013 3 2 2 0 01-2 2H8a2 2 0 01-2-2z" class="anim-drift" />
+                <path d="M8 14a4 4 0 014-4h4a4 4 0 014 4v2H8v-2z" class="anim-drift" style="animation-delay: -1s;" />
+            </svg>`,
+            insights: [
+                "✔ Diffused lighting; minor visibility changes.",
+                "✔ Safe crosswalk operation is active.",
+                "✔ Watch for sudden localized weather updates."
+            ]
+        },
+        45: { // Fog
+            label: "Foggy",
+            icon: `<svg class="w-full h-full text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 8h16" class="anim-mist-1" stroke-linecap="round" />
+                <path d="M6 12h12" class="anim-mist-2" stroke-linecap="round" />
+                <path d="M5 16h14" class="anim-mist-1" stroke-linecap="round" style="animation-delay: -0.5s;" />
+            </svg>`,
+            insights: [
+                "⚠ Low visibility detected.",
+                "⚠ Extra caution recommended for pedestrians.",
+                "⚠ AI confidence margins reduced due to mist."
+            ]
+        },
+        48: { // Fog
+            label: "Foggy",
+            icon: `<svg class="w-full h-full text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 8h16" class="anim-mist-1" stroke-linecap="round" />
+                <path d="M6 12h12" class="anim-mist-2" stroke-linecap="round" />
+                <path d="M5 16h14" class="anim-mist-1" stroke-linecap="round" style="animation-delay: -0.5s;" />
+            </svg>`,
+            insights: [
+                "⚠ Heavy fog; driver reaction times are lower.",
+                "⚠ Use headlights and caution near crosswalk zones.",
+                "⚠ Reduced contrast affects distance estimation."
+            ]
+        },
+        51: { // Rain / Drizzle
+            label: "Drizzle",
+            icon: `<svg class="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M19 12l-7 7-7-7" class="hidden" />
+                <path d="M8 12a3 3 0 013-3h4a3 3 0 013 3v1H8v-1z" fill="#93C5FD" stroke="none" />
+                <path d="M9 15v1" class="anim-rain-1" stroke="#3B82F6" stroke-linecap="round" />
+                <path d="M12 16v1" class="anim-rain-2" stroke="#3B82F6" stroke-linecap="round" />
+                <path d="M15 15v1" class="anim-rain-3" stroke="#3B82F6" stroke-linecap="round" />
+            </svg>`,
+            insights: [
+                "⚠ Wet road surface alert.",
+                "⚠ Vehicle braking distance increases by 20%.",
+                "⚠ Pedestrians might run to avoid getting wet."
+            ]
+        },
+        61: { // Rain
+            label: "Rainy",
+            icon: `<svg class="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M8 11a3 3 0 013-3h4a3 3 0 013 3v1H8v-1z" fill="#60A5FA" stroke="none" />
+                <path d="M9 14v2" class="anim-rain-1" stroke="#2563EB" stroke-linecap="round" />
+                <path d="M12 15v2" class="anim-rain-2" stroke="#2563EB" stroke-linecap="round" />
+                <path d="M15 14v2" class="anim-rain-3" stroke="#2563EB" stroke-linecap="round" />
+            </svg>`,
+            insights: [
+                "⚠ Active rainfall. Braking distance significantly increased.",
+                "⚠ Reduced camera visibility may lower detection confidence.",
+                "⚠ Pedestrian umbrellas may obstruct facial/pose tracking."
+            ]
+        },
+        95: { // Thunderstorm
+            label: "Stormy",
+            icon: `<svg class="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M8 11a3 3 0 013-3h4a3 3 0 013 3v1H8v-1z" fill="#4B5563" stroke="none" />
+                <path d="M9 14v2" class="anim-rain-1" stroke="#2563EB" stroke-linecap="round" />
+                <path d="M15 14v2" class="anim-rain-3" stroke="#2563EB" stroke-linecap="round" />
+                <path d="M12 12l-2 3h4l-2 3" class="anim-lightning" stroke="#F59E0B" fill="#F59E0B" />
+            </svg>`,
+            insights: [
+                "⚠ Severe weather alert: Thunderstorm.",
+                "⚠ Wind and rain hazard near crosswalk lanes.",
+                "⚠ Sudden loss of lighting may trigger simulation fail-safes."
+            ]
+        }
+    };
+    
+    // Default fallback config
+    const fallback = {
+        label: "Cloudy",
+        icon: `<svg class="w-full h-full text-blue-200" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" class="anim-drift"/></svg>`,
+        insights: [
+            "✔ Crosswalk operating normally.",
+            "✔ Traffic conditions status: Normal.",
+            "✔ Standard safety checks enabled."
+        ]
+    };
+
+    // If code is not explicitly handled, use matching categories (drizzle, rain, etc.)
+    let match = configs[code] || fallback;
+    if (code >= 3 && code < 45) match = configs[3];
+    if (code >= 51 && code < 61) match = configs[51];
+    if (code >= 61 && code < 95) match = configs[61];
+    if (code >= 95) match = configs[95];
+
+    if (!isDay && match.nightIcon) {
+        return {
+            label: match.nightLabel || match.label,
+            icon: match.nightIcon,
+            insights: match.insights
+        };
+    }
+    return match;
+}// Estimate UV Index based on weather type and daylight time
+function estimateUVIndex(wmoCode, isDay) {
+    if (!isDay) return 0;
+    const hour = new Date().getHours();
+    let maxUV = 8; // Summer average in Hyderabad
+    if (wmoCode >= 95) maxUV = 1;     // Stormy
+    else if (wmoCode >= 61) maxUV = 2; // Rainy
+    else if (wmoCode >= 51) maxUV = 3; // Drizzle
+    else if (wmoCode >= 3) maxUV = 4;  // Cloudy
+    else if (wmoCode >= 1) maxUV = 6;  // Partly Cloudy
+    
+    // UV index peaks around noon
+    const factor = Math.max(0, 1 - Math.abs(hour - 12.5) / 6);
+    return maxUV * factor;
+}
+
+// Format UV index description
+function getUVLabel(index) {
+    if (index === null || index === undefined) return "Low";
+    if (index < 3) return "Low (" + index.toFixed(1) + ")";
+    if (index < 6) return "Moderate (" + index.toFixed(1) + ")";
+    if (index < 8) return "High (" + index.toFixed(1) + ")";
+    return "Very High (" + index.toFixed(1) + ")";
+}
+
+async function fetchLiveWeather() {
+    try {
+        const url = "https://wttr.in/Hyderabad?format=j1";
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("wttr.in weather error");
+        
+        const data = await res.json();
+        const current = data.current_condition[0];
+        
+        // Map WWO weather code to our WMO code buckets
+        const wwoCode = parseInt(current.weatherCode);
+        let wmoCode = 3; // Default cloudy
+        if (wwoCode === 113) wmoCode = 0; // Clear/Sunny
+        else if (wwoCode === 116) wmoCode = 1; // Partly cloudy
+        else if (wwoCode === 119 || wwoCode === 122) wmoCode = 3; // Cloudy
+        else if ([143, 248, 260].includes(wwoCode)) wmoCode = 45; // Fog
+        else if ([386, 389].includes(wwoCode)) wmoCode = 95; // Thunderstorm
+        else wmoCode = 61; // Rain/Other
+
+        // Determine isDay based on hours
+        const hour = new Date().getHours();
+        const isDay = (hour >= 6 && hour < 18) ? 1 : 0;
+
+        const weatherInfo = {
+            temp: Math.round(parseFloat(current.temp_C)),
+            feelsLike: Math.round(parseFloat(current.FeelsLikeC)),
+            humidity: parseInt(current.humidity),
+            weatherCode: wmoCode,
+            isDay: isDay,
+            windSpeed: Math.round(parseFloat(current.windspeedKmph)),
+            pressure: parseInt(current.pressure),
+            visibility: parseInt(current.visibility), // in km
+            uvIndex: parseInt(current.uvIndex || 0),
+            timestamp: new Date().getTime()
+        };
+        
+        // Cache locally
+        localStorage.setItem(CACHE_KEY, JSON.stringify(weatherInfo));
+        renderWeather(weatherInfo);
+    } catch (err) {
+        console.warn("Weather API fetch failed, trying cached version.", err);
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+            renderWeather(JSON.parse(cached));
+        } else {
+            document.getElementById("weather-bubble-label").innerText = "Unavailable";
+        }
+    }
+}
+function renderWeather(info) {
+    const config = getWeatherConfig(info.weatherCode, info.isDay);
+    
+    // 1. Render Floating Bubble
+    document.getElementById("weather-bubble-icon").innerHTML = config.icon;
+    document.getElementById("weather-bubble-temp").innerText = `${info.temp}°C`;
+    document.getElementById("weather-bubble-label").innerText = config.label;
+    
+    // 2. Render Details in Modal
+    document.getElementById("popup-weather-icon").innerHTML = config.icon;
+    document.getElementById("popup-weather-label").innerText = config.label;
+    document.getElementById("popup-temp").innerText = `${info.temp}°C`;
+    document.getElementById("popup-feels-like").innerText = `${info.feelsLike}°C`;
+    document.getElementById("popup-humidity").innerText = `${info.humidity}%`;
+    document.getElementById("popup-wind").innerText = `${info.windSpeed} km/h`;
+    document.getElementById("popup-visibility").innerText = `${info.visibility} km`;
+    document.getElementById("popup-pressure").innerText = `${info.pressure} hPa`;
+    document.getElementById("popup-uv").innerText = getUVLabel(info.uvIndex);
+    
+    // Render AI Insights
+    const list = document.getElementById("popup-ai-insights");
+    list.innerHTML = "";
+    config.insights.forEach(ins => {
+        const li = document.createElement("li");
+        li.innerText = ins;
+        if (ins.startsWith("⚠")) {
+            li.className = "text-amber-700 font-bold";
+        } else {
+            li.className = "text-theme-bark-muted";
+        }
+        list.appendChild(li);
+    });
+    
+    // Set updated time
+    const updatedTime = new Date(info.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    document.getElementById("popup-updated").innerText = updatedTime;
+}
+
+function openWeatherPopup() {
+    const overlay = document.getElementById("weather-popup-overlay");
+    const card = document.getElementById("weather-popup-card");
+    
+    overlay.classList.remove("hidden");
+    setTimeout(() => {
+        overlay.classList.add("opacity-100");
+        card.classList.add("scale-100", "opacity-100");
+    }, 10);
+}
+
+function closeWeatherPopup() {
+    const overlay = document.getElementById("weather-popup-overlay");
+    const card = document.getElementById("weather-popup-card");
+    
+    overlay.classList.remove("opacity-100");
+    card.classList.remove("scale-100", "opacity-100");
+    
+    setTimeout(() => {
+        overlay.classList.add("hidden");
+    }, 300);
+}
+
+// Initialise Weather Loader
+document.addEventListener("DOMContentLoaded", () => {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+        const parsed = JSON.parse(cached);
+        const now = new Date().getTime();
+        // If cache is fresh, use it directly
+        if (now - parsed.timestamp < CACHE_EXPIRY) {
+            renderWeather(parsed);
+            return;
+        }
+    }
+    fetchLiveWeather();
+    // Refresh weather every 8 minutes
+    setInterval(fetchLiveWeather, 8 * 60 * 1000);
+});
+</script>
+{% endblock %}

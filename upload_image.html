@@ -1,0 +1,212 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Upload Image{% endblock %}
+{% block page_subtitle %}<p class="text-sm text-theme-bark-muted mt-1">Upload an image for AI analysis</p>{% endblock %}
+
+{% block dashboard_content %}
+{% if error %}
+<div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-3 shadow-sm">
+    <div class="w-6 h-6 flex items-center justify-center text-red-500 flex-shrink-0 mt-0.5">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+    </div>
+    <div>
+        <p class="font-bold text-red-800 text-sm">Processing Error</p>
+        <p class="text-red-700 text-xs mt-1">{{ error }}</p>
+    </div>
+</div>
+{% endif %}
+
+{% if not processed_image_url %}
+<div class="glass-panel p-8 flex flex-col items-center justify-center border-2 border-dashed border-theme-dusty-blue/40 min-h-[400px]">
+    <div class="w-16 h-16 rounded-2xl bg-theme-dusty-blue/15 flex items-center justify-center mb-4">
+        <svg class="w-8 h-8 text-theme-dusty-blue-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 11v6m0-6l-3 3m3-3l3 3"></path></svg>
+    </div>
+    <h3 class="text-xl font-bold text-theme-bark mb-2">Drag & drop an image here</h3>
+    <p class="text-theme-bark-muted mb-6 text-center max-w-md">or click to browse. Supports JPG, JPEG, PNG (max 10MB).</p>
+    
+    <form action="{{ url_for('dashboard.upload_image') }}" method="POST" enctype="multipart/form-data" class="flex flex-col items-center">
+        <label class="btn-primary px-8 py-3 cursor-pointer shadow-md inline-block mb-4">
+            Choose File
+            <input type="file" name="image" class="hidden" accept="image/jpeg,image/png,image/jpg" onchange="this.form.submit()">
+        </label>
+        <p class="text-xs text-theme-bark-muted">Supported formats: JPG, JPEG, PNG</p>
+    </form>
+</div>
+{% else %}
+
+{# ══════════════════════════════════════════════════════
+   RESULTS SECTION — shown after processing is complete
+   ══════════════════════════════════════════════════════ #}
+
+{# ── Row 1: Image + Detection List ───────────────────────────────────────── #}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Processed Image -->
+    <div class="glass-panel p-6">
+        <h3 class="text-xl font-bold text-theme-bark mb-4">Processed Image</h3>
+        <img src="{{ processed_image_url }}" alt="Processed Image" class="w-full h-auto rounded-lg shadow-md mb-4 border border-theme-dusty-blue/30">
+        <a href="{{ processed_image_url }}" download class="btn-primary px-6 py-2 inline-block shadow-md text-center w-full">Download Processed Image</a>
+    </div>
+
+    <!-- Detection History -->
+    <div class="glass-panel p-6">
+        <h3 class="text-xl font-bold text-theme-bark mb-4">Detection Results</h3>
+
+        <div class="bg-white/60 p-4 rounded-xl shadow-inner border border-theme-dusty-blue/20 mb-4">
+            <p class="text-sm font-bold text-theme-bark-muted uppercase tracking-wider mb-1">Total Objects Detected</p>
+            <p class="text-3xl font-black text-gray-600 hover:text-theme-sage-dark transition-colors">{{ total_count }}</p>
+        </div>
+
+        <h4 class="text-md font-bold text-theme-bark-muted mb-3">Detected Objects:</h4>
+        {% if detections %}
+        <ul class="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+            {% for det in detections %}
+            <li class="flex justify-between items-center p-3 bg-white/50 rounded-lg border border-theme-dusty-blue/15 hover:bg-theme-dusty-blue/10 transition-colors">
+                <span class="font-bold text-gray-600 hover:text-theme-sage-dark transition-colors capitalize">{{ det.class_name }}</span>
+                <span class="text-sm font-semibold bg-theme-dusty-blue/15 text-theme-bark py-1 px-2 rounded-full">
+                    Count: {{ det.count }} | Avg Conf: {{ "%.1f"|format(det.confidence * 100) }}%
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-theme-bark-muted italic">No target objects were detected in this image.</p>
+        {% endif %}
+
+        <div class="mt-6 pt-4 border-t border-theme-dusty-blue/30 text-center">
+            <a href="{{ url_for('dashboard.upload_image') }}" class="text-theme-bark-muted font-bold hover:text-theme-bark underline">Upload Another Image</a>
+        </div>
+    </div>
+</div>
+
+{# ── Row 2: Dashboard Summary Cards ─────────────────────────────────────── #}
+<div class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-3 mb-6">
+    <div class="glass-panel p-3 flex flex-col items-center text-center">
+        <p class="text-xs font-bold text-theme-bark-muted uppercase tracking-wider mb-1">Vehicles</p>
+        <p class="text-2xl font-black text-theme-bark">{{ vehicle_count or 0 }}</p>
+    </div>
+    <div class="glass-panel p-3 flex flex-col items-center text-center">
+        <p class="text-xs font-bold text-theme-bark-muted uppercase tracking-wider mb-1">Pedestrians</p>
+        <p class="text-2xl font-black text-theme-sage-dark">{{ pedestrian_count or 0 }}</p>
+    </div>
+    <div class="glass-panel p-3 flex flex-col items-center text-center">
+        <p class="text-xs font-bold text-theme-bark-muted uppercase tracking-wider mb-1">Cars</p>
+        <p class="text-2xl font-black text-blue-600">{{ car_count or 0 }}</p>
+    </div>
+    <div class="glass-panel p-3 flex flex-col items-center text-center">
+        <p class="text-xs font-bold text-theme-bark-muted uppercase tracking-wider mb-1">Buses</p>
+        <p class="text-2xl font-black text-purple-600">{{ bus_count or 0 }}</p>
+    </div>
+    <div class="glass-panel p-3 flex flex-col items-center text-center">
+        <p class="text-xs font-bold text-theme-bark-muted uppercase tracking-wider mb-1">Trucks</p>
+        <p class="text-2xl font-black text-orange-600">{{ truck_count or 0 }}</p>
+    </div>
+    <div class="glass-panel p-3 flex flex-col items-center text-center">
+        <p class="text-xs font-bold text-theme-bark-muted uppercase tracking-wider mb-1">Bikes</p>
+        <p class="text-2xl font-black text-teal-600">{{ bike_count or 0 }}</p>
+    </div>
+    <div class="glass-panel p-3 flex flex-col items-center text-center">
+        <p class="text-xs font-bold text-theme-bark-muted uppercase tracking-wider mb-1">Motorcycles</p>
+        <p class="text-2xl font-black text-yellow-600">{{ motorcycle_count or 0 }}</p>
+    </div>
+    <div class="glass-panel p-3 flex flex-col items-center text-center">
+        <p class="text-xs font-bold text-theme-bark-muted uppercase tracking-wider mb-1">Collision Risk</p>
+        <p class="text-2xl font-black
+            {% if collision_risk_pct >= 70 %}text-red-600
+            {% elif collision_risk_pct >= 40 %}text-orange-500
+            {% else %}text-green-600{% endif %}">
+            {{ collision_risk_pct or 0 }}%
+        </p>
+        <p class="text-xs font-semibold
+            {% if collision_risk_pct >= 70 %}text-red-500
+            {% elif collision_risk_pct >= 40 %}text-orange-400
+            {% else %}text-green-500{% endif %}">
+            {{ risk_level or 'Low Risk' }}
+        </p>
+    </div>
+    <div class="glass-panel p-3 flex flex-col items-center text-center">
+        <p class="text-xs font-bold text-theme-bark-muted uppercase tracking-wider mb-1">Confidence</p>
+        <p class="text-2xl font-black text-theme-bark">{{ detection_confidence or 0 }}%</p>
+    </div>
+</div>
+
+{# ── Row 2b: Traffic Density + Crosswalk status strip ─────────────────────── #}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="glass-panel px-5 py-3 flex items-center gap-4">
+        <span class="text-sm font-bold text-theme-bark-muted uppercase tracking-wider">Traffic Density:</span>
+        <span class="text-lg font-black
+            {% if traffic_density == 'Heavy' %}text-red-600
+            {% elif traffic_density == 'Moderate' %}text-orange-500
+            {% else %}text-green-600{% endif %}">
+            {{ traffic_density or 'Light' }}
+        </span>
+        <span class="ml-auto text-sm font-bold text-theme-bark-muted uppercase tracking-wider">Violations:</span>
+        <span class="text-lg font-black text-theme-terracotta-dark">{{ violations or 0 }}</span>
+    </div>
+    <div class="glass-panel px-5 py-3 flex items-center gap-4">
+        <span class="text-sm font-bold text-theme-bark-muted uppercase tracking-wider">Crosswalk:</span>
+        <span class="text-lg font-black
+            {% if '⚠' in (crosswalk_status or '') %}text-red-600{% else %}text-green-600{% endif %}">
+            {{ crosswalk_status or '✅ Safe Crossing' }}
+        </span>
+    </div>
+</div>
+
+{# ── Alerts Panel ─────────────────────────────────────────────────────────── #}
+{% if alerts %}
+<div class="glass-panel p-5 mb-6">
+    <h3 class="text-lg font-bold text-theme-bark mb-3 flex items-center gap-2">
+        <span class="text-red-500">⚠</span> System Alerts ({{ alerts|length }})
+    </h3>
+    <div class="space-y-2">
+        {% for alert in alerts %}
+        <div class="flex items-start gap-3 p-3 rounded-lg
+            {% if alert.type == 'CRITICAL' %}bg-red-50 border border-red-300
+            {% elif alert.type in ['HIGH', 'SPEEDING'] %}bg-orange-50 border border-orange-300
+            {% elif alert.type == 'CROSSWALK' %}bg-yellow-50 border border-yellow-300
+            {% else %}bg-blue-50 border border-blue-200{% endif %}">
+            <span class="text-xs font-black px-2 py-0.5 rounded
+                {% if alert.type == 'CRITICAL' %}bg-red-600 text-white
+                {% elif alert.type in ['HIGH', 'SPEEDING'] %}bg-orange-500 text-white
+                {% elif alert.type == 'CROSSWALK' %}bg-yellow-500 text-white
+                {% else %}bg-blue-500 text-white{% endif %}">
+                {{ alert.type }}
+            </span>
+            <p class="text-sm text-gray-700">{{ alert.message }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{# ── AI Safety Analysis ──────────────────────────────────────────────────── #}
+<div class="glass-panel p-6">
+    <div class="flex items-center gap-2 mb-4">
+        <div class="w-8 h-8 rounded-lg bg-theme-amber/30 flex items-center justify-center">
+            <svg class="w-5 h-5 text-theme-amber-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-bold text-theme-bark">AI Safety Analysis</h3>
+        <span class="text-xs bg-theme-sage/20 text-theme-sage-dark px-2 py-0.5 rounded-full font-bold">Groq AI</span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {% if gemini_explanation %}
+        <div class="bg-white/60 p-4 rounded-xl border border-theme-dusty-blue/20">
+            <p class="text-sm font-bold text-theme-bark-muted uppercase tracking-wider mb-2">Analysis</p>
+            <p class="text-sm text-gray-700 leading-relaxed">{{ gemini_explanation }}</p>
+        </div>
+        {% endif %}
+
+        {% if gemini_recommendation %}
+        <div class="bg-theme-sage/10 p-4 rounded-xl border border-theme-sage/30">
+            <p class="text-sm font-bold text-theme-sage-dark uppercase tracking-wider mb-2">Recommendations</p>
+            <p class="text-sm text-gray-700 leading-relaxed">{{ gemini_recommendation }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
