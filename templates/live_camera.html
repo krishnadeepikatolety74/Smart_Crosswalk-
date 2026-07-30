@@ -1,0 +1,520 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Live Camera{% endblock %}
+{% block page_subtitle %}<p class="text-sm text-theme-bark-muted mt-1">AI Smart Traffic Surveillance System</p>{% endblock %}
+
+{% block dashboard_content %}
+
+<style>
+/* ── Reset the outer wrapper padding so camera fills the space ── */
+.dashboard-content-inner { padding: 0 !important; }
+
+/* ── Keyframe for live pulse animation ── */
+@keyframes livePulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+}
+.pulse-dot { animation: livePulse 1.2s ease-in-out infinite; }
+
+/* ── Feed selector buttons ── */
+.feed-btn {
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1.5px solid;
+    cursor: pointer;
+    transition: all 0.25s;
+    white-space: nowrap;
+}
+.feed-active   { background: rgba(34,197,94,0.15); border-color: #22c55e; color: #22c55e; }
+.feed-inactive { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.15); color: #9ca3af; }
+.feed-inactive:hover { border-color: rgba(255,255,255,0.35); color: #d1d5db; }
+.feed-risk-inactive { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.35); color: #f87171; }
+.feed-risk-active   { background: rgba(239,68,68,0.20); border-color: #ef4444; color: #ef4444; }
+
+/* ── Right sidebar cards ── */
+.s-card {
+    background: rgba(10,10,10,0.78);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 10px;
+    padding: 10px 12px;
+    backdrop-filter: blur(4px);
+}
+.s-card-title {
+    font-family: monospace;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #4b5563;
+    margin-bottom: 6px;
+}
+</style>
+
+<div style="display:flex; gap:12px; height:calc(100vh - 148px); min-height:520px; overflow:hidden;">
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- MAIN CAMERA COLUMN -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:8px;">
+
+        <!-- ── SURVEILLANCE VIEWPORT ── -->
+        <div style="position:relative; flex:1; background:#000; border-radius:12px; overflow:hidden;
+                    border:1px solid rgba(255,255,255,0.08); box-shadow:0 8px 40px rgba(0,0,0,0.6); min-height:380px;">
+
+            <!-- MJPEG Stream -->
+            <img id="camera-feed"
+                 src="{{ url_for('main.video_feed') }}"
+                 alt="AI Surveillance"
+                 style="width:100%; height:100%; object-fit:cover; display:block;"
+                 onerror="handleFeedError()"
+                 onload="hideOverlay()">
+
+            <!-- ════════════════════════════════════════════════════ -->
+            <!-- TOP-LEFT HUD                                         -->
+            <!-- ════════════════════════════════════════════════════ -->
+            <div style="position:absolute; top:12px; left:12px; z-index:20; pointer-events:none; user-select:none;
+                        background:rgba(0,0,0,0.72); border-radius:10px; padding:10px 13px; min-width:176px;
+                        border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(3px);">
+                <!-- Header row -->
+                <div style="display:flex; align-items:center; gap:6px; padding-bottom:7px; margin-bottom:7px;
+                            border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <div class="pulse-dot" style="width:7px; height:7px; border-radius:50%; background:#22c55e; flex-shrink:0;"></div>
+                    <span style="font-family:monospace; font-size:10px; font-weight:900; color:#22c55e; letter-spacing:0.05em;">YOLOv10n ACTIVE</span>
+                </div>
+                <!-- Stats rows -->
+                <div style="display:flex; flex-direction:column; gap:4px; font-family:monospace; font-size:10px;">
+                    <div style="display:flex; justify-content:space-between; gap:20px;">
+                        <span style="color:#6b7280;">FPS</span>
+                        <span id="hud-fps" style="color:#fff; font-weight:700;">30</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:20px;">
+                        <span style="color:#6b7280;">Objects</span>
+                        <span id="hud-objects" style="color:#fff; font-weight:700;">0</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:20px;">
+                        <span style="color:#6b7280;">Traffic Density</span>
+                        <span id="hud-density" style="color:#fff; font-weight:700;">Light</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:20px;">
+                        <span style="color:#6b7280;">Collision Risk</span>
+                        <span id="hud-risk" style="color:#fff; font-weight:700;">Low</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:20px;">
+                        <span style="color:#6b7280;">Processing</span>
+                        <span id="hud-proc" style="color:#fff; font-weight:700;">12 ms</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:20px;">
+                        <span style="color:#6b7280;">Confidence</span>
+                        <span style="color:#fff; font-weight:700;">0.45</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════════════════════════════════════════════════════ -->
+            <!-- TOP-CENTER STATUS BADGE                              -->
+            <!-- ════════════════════════════════════════════════════ -->
+            <div style="position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:20;
+                        pointer-events:none; user-select:none;">
+                <div style="background:rgba(0,0,0,0.80); border-radius:999px; padding:7px 18px;
+                            border:1px solid rgba(255,255,255,0.10); display:flex; align-items:center;
+                            gap:10px; justify-content:center;">
+                    <span style="font-family:monospace; font-size:9px; font-weight:800; color:#6b7280;
+                                 letter-spacing:0.12em; text-transform:uppercase;">SMART CROSSWALK</span>
+                    <span style="width:1px; height:14px; background:rgba(255,255,255,0.12);"></span>
+                    <div id="badge-dot" class="pulse-dot"
+                         style="width:8px; height:8px; border-radius:50%; background:#22c55e; flex-shrink:0;"></div>
+                    <span id="badge-text" style="font-family:monospace; font-size:13px; font-weight:900;
+                                                  color:#22c55e; letter-spacing:0.06em;">CLEAR</span>
+                </div>
+            </div>
+
+            <!-- ════════════════════════════════════════════════════ -->
+            <!-- TOP-RIGHT LIVE PANEL                                 -->
+            <!-- ════════════════════════════════════════════════════ -->
+            <div style="position:absolute; top:12px; right:12px; z-index:20; pointer-events:none; user-select:none;
+                        background:rgba(0,0,0,0.72); border-radius:10px; padding:10px 13px; min-width:148px;
+                        border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(3px);">
+                <div style="display:flex; align-items:center; justify-content:space-between;
+                            padding-bottom:7px; margin-bottom:7px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <div class="pulse-dot" style="width:7px; height:7px; border-radius:50%; background:#ef4444; flex-shrink:0;"></div>
+                        <span style="font-family:monospace; font-size:11px; font-weight:900; color:#ef4444;">LIVE</span>
+                    </div>
+                    <span id="hud-time" style="font-family:monospace; font-size:10px; color:#d1d5db; font-weight:700;">00:00:00</span>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px; font-family:monospace; font-size:9px;">
+                    <div style="display:flex; justify-content:space-between; gap:12px;">
+                        <span style="color:#6b7280;">Recording</span>
+                        <span style="color:#22c55e; font-weight:700;">ON</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:12px;">
+                        <span style="color:#6b7280;">Model</span>
+                        <span style="color:#fff; font-weight:700;">YOLOv10n</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; gap:12px;">
+                        <span style="color:#6b7280;">Running</span>
+                        <span style="color:#22c55e; font-weight:700;">✓</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════════════════════════════════════════════════════ -->
+            <!-- BOTTOM-LEFT DETECTION TIMELINE                       -->
+            <!-- ════════════════════════════════════════════════════ -->
+            <div style="position:absolute; bottom:12px; left:12px; z-index:20; pointer-events:none; user-select:none;
+                        background:rgba(0,0,0,0.72); border-radius:10px; padding:10px 13px; min-width:240px;
+                        border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(3px);">
+                <div style="font-family:monospace; font-size:8px; font-weight:800; color:#4b5563;
+                            letter-spacing:0.12em; text-transform:uppercase; margin-bottom:7px;">
+                    Live Detection Timeline
+                </div>
+                <ul id="timeline-list" style="list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:3px;">
+                    <li style="font-family:monospace; font-size:9px; color:#4b5563; font-style:italic;">Monitoring activity...</li>
+                </ul>
+            </div>
+
+            <!-- ════════════════════════════════════════════════════ -->
+            <!-- FEED LOADING / ERROR OVERLAY                         -->
+            <!-- ════════════════════════════════════════════════════ -->
+            <div id="feed-overlay" class="hidden" style="position:absolute; inset:0; z-index:40; display:none;
+                        background:rgba(0,0,0,0.85); flex-direction:column; align-items:center; justify-content:center;">
+                <div id="overlay-icon" style="font-size:40px; margin-bottom:10px;">⏳</div>
+                <p id="overlay-title" style="color:#fff; font-weight:700; font-size:14px; margin:0 0 4px 0;">Connecting...</p>
+                <p id="overlay-msg" style="color:#6b7280; font-size:11px; margin:0;">Please wait</p>
+                <button onclick="reloadFeed()" style="margin-top:14px; padding:7px 18px; background:#22c55e; color:#000;
+                            border:none; border-radius:8px; font-size:11px; font-weight:700; cursor:pointer;">🔄 Reload</button>
+            </div>
+        </div>
+
+        <!-- ── COMPACT FEED SELECTOR ── -->
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:2px 0;">
+            <span style="font-family:monospace; font-size:9px; font-weight:800; color:#6b7280;
+                         text-transform:uppercase; letter-spacing:0.08em; flex-shrink:0;">Stream:</span>
+            <button id="btn-webcam"     class="feed-btn feed-active"
+                    onclick="changeFeed('webcam', this, false)">💻 Simulator / Local</button>
+            <button id="btn-hyderabad"  class="feed-btn feed-inactive"
+                    onclick="changeFeed('ytsearch1:Gachibowli traffic 4K', this, false)">🇮🇳 Hyderabad Hitech</button>
+            <button id="btn-risk"       class="feed-btn feed-risk-inactive"
+                    onclick="changeFeed('risk_demo.mp4', this, true)">⚠️ Risk Demo</button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- RIGHT SIDEBAR PANELS                                            -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div style="width:196px; flex-shrink:0; display:flex; flex-direction:column; gap:8px; overflow-y:auto; padding-right:2px;">
+
+        <!-- Traffic Density -->
+        <div class="s-card">
+            <div class="s-card-title">Traffic Density</div>
+            <div id="side-density" style="font-family:monospace; font-size:18px; font-weight:900; color:#22c55e;">Light</div>
+            <div style="height:4px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:7px; overflow:hidden;">
+                <div id="side-density-bar"
+                     style="height:100%; width:20%; background:#22c55e; border-radius:2px; transition:width 0.6s, background 0.6s;"></div>
+            </div>
+        </div>
+
+        <!-- Crosswalk Status -->
+        <div class="s-card">
+            <div class="s-card-title">Crosswalk Status</div>
+            <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+                <div id="side-status-dot" class="pulse-dot"
+                     style="width:10px; height:10px; border-radius:50%; background:#22c55e; flex-shrink:0;"></div>
+                <span id="side-status-text"
+                      style="font-family:monospace; font-size:13px; font-weight:900; color:#22c55e;">CLEAR</span>
+            </div>
+            <div id="side-ped-count"
+                 style="font-family:monospace; font-size:9px; color:#4b5563; margin-top:5px;">0 pedestrians in zone</div>
+        </div>
+
+        <!-- Collision Risk Meter -->
+        <div class="s-card">
+            <div class="s-card-title">Collision Risk</div>
+            <div style="display:flex; align-items:center; gap:10px; margin-top:4px;">
+                <!-- Circular dial -->
+                <div style="position:relative; width:54px; height:54px; flex-shrink:0;">
+                    <svg width="54" height="54" viewBox="0 0 54 54">
+                        <circle cx="27" cy="27" r="21" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4"/>
+                        <circle id="risk-ring" cx="27" cy="27" r="21" fill="none" stroke="#22c55e" stroke-width="4"
+                                stroke-linecap="round"
+                                stroke-dasharray="131.9"
+                                stroke-dashoffset="115"
+                                transform="rotate(-90 27 27)"
+                                style="transition:stroke-dashoffset 0.6s ease, stroke 0.6s ease;"/>
+                    </svg>
+                    <div id="risk-ring-txt"
+                         style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+                                font-family:monospace; font-size:9px; font-weight:900; color:#22c55e;">LOW</div>
+                </div>
+                <div>
+                    <div id="side-risk-label"
+                         style="font-family:monospace; font-size:11px; font-weight:800; color:#22c55e;">Low Severity</div>
+                    <div style="font-size:9px; color:#4b5563; margin-top:2px;">Real-time</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Decision -->
+        <div class="s-card">
+            <div class="s-card-title">AI Decision</div>
+            <div id="side-ai-decision"
+                 style="font-family:monospace; font-size:12px; font-weight:900; color:#22c55e; margin-top:4px; line-height:1.35;">
+                Safe to Cross
+            </div>
+            <div style="font-size:9px; color:#4b5563; margin-top:4px;">System recommendation</div>
+        </div>
+
+        <!-- Camera Information -->
+        <div class="s-card">
+            <div class="s-card-title">Camera Info</div>
+            <div style="display:flex; flex-direction:column; gap:4px; margin-top:2px; font-family:monospace; font-size:9px;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#4b5563;">Status</span>
+                    <span style="color:#22c55e; font-weight:700;">🟢 ONLINE</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#4b5563;">Resolution</span>
+                    <span style="color:#d1d5db; font-weight:700;">1920×1080</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#4b5563;">Model</span>
+                    <span style="color:#d1d5db; font-weight:700;">YOLOv10n</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#4b5563;">Conf Thresh</span>
+                    <span style="color:#d1d5db; font-weight:700;">0.45</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#4b5563;">Inference</span>
+                    <span id="side-inference" style="color:#d1d5db; font-weight:700;">12 ms</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<script>
+// ── State ─────────────────────────────────────────────────────────────
+let lastStatus = null;
+let lastRisk   = null;
+let timelineEvents = [];
+let feedErrorTimer = null;
+
+// ── Live Clock ────────────────────────────────────────────────────────
+(function clockTick() {
+    const el = document.getElementById('hud-time');
+    if (el) el.textContent = new Date().toTimeString().slice(0, 8);
+    setTimeout(clockTick, 1000);
+})();
+
+// ── Feed Controls ─────────────────────────────────────────────────────
+function changeFeed(src, btn, isRisk) {
+    document.querySelectorAll('.feed-btn').forEach(b => {
+        b.className = b.id === 'btn-risk' ? 'feed-btn feed-risk-inactive' : 'feed-btn feed-inactive';
+    });
+    btn.className = 'feed-btn ' + (isRisk ? 'feed-risk-active' : 'feed-active');
+
+    showOverlay('⏳', 'Connecting to feed…', 'Loading stream');
+    const img = document.getElementById('camera-feed');
+    img.src = '';
+    const url = (src === 'webcam')
+        ? "{{ url_for('main.video_feed') }}"
+        : "{{ url_for('main.video_feed') }}?video=" + encodeURIComponent(src);
+    if (feedErrorTimer) clearTimeout(feedErrorTimer);
+    feedErrorTimer = setTimeout(hideOverlay, 4000);
+    setTimeout(() => { img.src = url; }, 80);
+}
+
+function handleFeedError() {
+    showOverlay('⚠️', 'Stream Unavailable', 'Camera or video source is offline.');
+}
+function hideOverlay() {
+    const o = document.getElementById('feed-overlay');
+    if (o) { o.style.display = 'none'; }
+    if (feedErrorTimer) { clearTimeout(feedErrorTimer); feedErrorTimer = null; }
+}
+function showOverlay(icon, title, msg) {
+    document.getElementById('overlay-icon').textContent = icon;
+    document.getElementById('overlay-title').textContent = title;
+    document.getElementById('overlay-msg').textContent = msg;
+    const o = document.getElementById('feed-overlay');
+    o.style.display = 'flex';
+}
+function reloadFeed() {
+    const img = document.getElementById('camera-feed');
+    const s = img.src;
+    img.src = '';
+    showOverlay('⏳', 'Reconnecting…', 'Please wait');
+    setTimeout(() => { img.src = s; }, 300);
+}
+
+// ── Timeline ──────────────────────────────────────────────────────────
+function addEvent(type, desc) {
+    const now = new Date().toTimeString().slice(0, 8);
+    timelineEvents.unshift({ time: now, type, desc });
+    if (timelineEvents.length > 5) timelineEvents.pop();
+    renderTimeline();
+}
+function renderTimeline() {
+    const ul = document.getElementById('timeline-list');
+    if (!ul) return;
+    if (!timelineEvents.length) {
+        ul.innerHTML = '<li style="font-family:monospace;font-size:9px;color:#4b5563;font-style:italic;">Monitoring activity...</li>';
+        return;
+    }
+    ul.innerHTML = timelineEvents.map(e => {
+        const dot = e.type.includes('Warning') || e.type.includes('Risk') || e.type.includes('Collision')
+            ? '#ef4444' : e.type.includes('Entered') || e.type.includes('Waiting') ? '#f59e0b' : '#22c55e';
+        return `<li style="display:flex;justify-content:space-between;align-items:center;gap:8px;
+                            font-family:monospace;font-size:9px;">
+            <div style="display:flex;align-items:center;gap:5px;min-width:0;">
+                <div style="width:5px;height:5px;border-radius:50%;background:${dot};flex-shrink:0;"></div>
+                <div style="min-width:0;">
+                    <span style="color:#d1d5db;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.type}</span>
+                    <span style="color:#4b5563;font-size:8px;">${e.desc}</span>
+                </div>
+            </div>
+            <span style="color:#374151;flex-shrink:0;font-size:8px;">${e.time}</span>
+        </li>`;
+    }).join('');
+}
+
+// ── Risk Ring helper ──────────────────────────────────────────────────
+// circumference = 2 * π * 21 ≈ 131.9
+// full ring = dashoffset 0  → HIGH RISK
+// empty     = dashoffset 131.9 → SAFE
+function setRiskRing(level) {
+    const ring = document.getElementById('risk-ring');
+    const txt  = document.getElementById('risk-ring-txt');
+    const lbl  = document.getElementById('side-risk-label');
+    if (!ring) return;
+    if (level === 'HIGH RISK') {
+        ring.style.stroke = '#ef4444';
+        ring.setAttribute('stroke-dashoffset', '10');
+        txt.style.color = '#ef4444';
+        txt.textContent = 'HIGH';
+        lbl.style.color = '#ef4444';
+        lbl.textContent = 'High Severity';
+    } else if (level === 'MEDIUM') {
+        ring.style.stroke = '#f59e0b';
+        ring.setAttribute('stroke-dashoffset', '66');
+        txt.style.color = '#f59e0b';
+        txt.textContent = 'MED';
+        lbl.style.color = '#f59e0b';
+        lbl.textContent = 'Medium Severity';
+    } else {
+        ring.style.stroke = '#22c55e';
+        ring.setAttribute('stroke-dashoffset', '115');
+        txt.style.color = '#22c55e';
+        txt.textContent = 'LOW';
+        lbl.style.color = '#22c55e';
+        lbl.textContent = 'Low Severity';
+    }
+}
+
+// ── Status API Poll ───────────────────────────────────────────────────
+function pollStatus() {
+    fetch('/api/status')
+        .then(r => r.json())
+        .then(d => {
+            const status  = d.status  || 'Risk Zone Clear';
+            const risk    = d.risk_level || 'SAFE';
+            const density = d.traffic_density || 'Light';
+            const count   = d.count || 0;
+            const counts  = d.counts || {};
+            const fps     = d.fps || 30;
+            const inf     = d.inference_ms || 12;
+            const total   = Object.values(counts).reduce((a, b) => a + b, 0);
+
+            // ── Timeline events ───────────────────────────────────
+            if (status !== lastStatus) {
+                if (status.includes('Occupied'))       addEvent('Crosswalk Occupied', count + ' ped(s) in zone');
+                else if (lastStatus !== null)          addEvent('Crosswalk Cleared',  'Zone is empty');
+                lastStatus = status;
+            }
+            if (risk !== lastRisk) {
+                if (risk === 'HIGH RISK')              addEvent('Collision Warning', 'High-risk scenario');
+                else if (risk === 'MEDIUM')            addEvent('Vehicle Approaching', 'Near crosswalk');
+                lastRisk = risk;
+            }
+
+            // ── TOP-LEFT HUD ──────────────────────────────────────
+            document.getElementById('hud-fps').textContent     = fps;
+            document.getElementById('hud-objects').textContent = total;
+            document.getElementById('hud-density').textContent = density;
+            document.getElementById('hud-risk').textContent    = risk === 'HIGH RISK' ? 'HIGH' : risk === 'MEDIUM' ? 'MED' : 'Low';
+            document.getElementById('hud-proc').textContent    = inf + ' ms';
+            const riskEl = document.getElementById('hud-risk');
+            riskEl.style.color = risk === 'HIGH RISK' ? '#ef4444' : risk === 'MEDIUM' ? '#f59e0b' : '#22c55e';
+
+            // ── TOP-CENTER BADGE ──────────────────────────────────
+            const dot  = document.getElementById('badge-dot');
+            const btxt = document.getElementById('badge-text');
+            if (risk === 'HIGH RISK') {
+                dot.style.background  = '#ef4444';
+                btxt.style.color      = '#ef4444';
+                btxt.textContent      = 'HIGH RISK';
+            } else if (status.includes('Occupied')) {
+                dot.style.background  = '#f59e0b';
+                btxt.style.color      = '#f59e0b';
+                btxt.textContent      = 'OCCUPIED';
+            } else {
+                dot.style.background  = '#22c55e';
+                btxt.style.color      = '#22c55e';
+                btxt.textContent      = 'CLEAR';
+            }
+
+            // ── SIDEBAR: Density ──────────────────────────────────
+            const dEl  = document.getElementById('side-density');
+            const dBar = document.getElementById('side-density-bar');
+            dEl.textContent = density;
+            if (density === 'Heavy') {
+                dEl.style.color = '#ef4444'; dBar.style.width = '90%'; dBar.style.background = '#ef4444';
+            } else if (density === 'Medium') {
+                dEl.style.color = '#f59e0b'; dBar.style.width = '55%'; dBar.style.background = '#f59e0b';
+            } else {
+                dEl.style.color = '#22c55e'; dBar.style.width = '20%'; dBar.style.background = '#22c55e';
+            }
+
+            // ── SIDEBAR: Status ───────────────────────────────────
+            const sDot  = document.getElementById('side-status-dot');
+            const sTxt  = document.getElementById('side-status-text');
+            const sPed  = document.getElementById('side-ped-count');
+            if (status.includes('Occupied')) {
+                sDot.style.background = '#f59e0b'; sTxt.style.color = '#f59e0b'; sTxt.textContent = 'OCCUPIED';
+            } else {
+                sDot.style.background = '#22c55e'; sTxt.style.color = '#22c55e'; sTxt.textContent = 'CLEAR';
+            }
+            sPed.textContent = count + ' pedestrian' + (count !== 1 ? 's' : '') + ' in zone';
+
+            // ── SIDEBAR: Risk ring ────────────────────────────────
+            setRiskRing(risk);
+
+            // ── SIDEBAR: AI Decision ──────────────────────────────
+            const dec = document.getElementById('side-ai-decision');
+            if (risk === 'HIGH RISK') {
+                dec.style.color = '#ef4444'; dec.textContent = 'Collision Risk Detected';
+            } else if (status.includes('Occupied')) {
+                dec.style.color = '#f59e0b'; dec.textContent = 'Pedestrian Crossing — Yield';
+            } else if (count > 0) {
+                dec.style.color = '#f59e0b'; dec.textContent = 'Pedestrian Waiting';
+            } else if (density === 'Heavy') {
+                dec.style.color = '#f59e0b'; dec.textContent = 'Vehicle Slowing';
+            } else {
+                dec.style.color = '#22c55e'; dec.textContent = 'Safe to Cross';
+            }
+
+            // ── SIDEBAR: Inference ────────────────────────────────
+            document.getElementById('side-inference').textContent = inf + ' ms';
+        })
+        .catch(() => {});
+}
+
+setInterval(pollStatus, 1000);
+pollStatus();
+</script>
+{% endblock %}

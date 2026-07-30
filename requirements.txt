@@ -1,0 +1,12 @@
+Flask==3.0.0
+google-generativeai==0.3.1
+Werkzeug==3.0.1
+python-dotenv==1.0.0
+opencv-python==4.9.0.80
+ultralytics==8.1.24
+Flask-SQLAlchemy==3.1.1
+matplotlib
+seaborn
+pandas
+reportlab
+pyttsx3

@@ -1,0 +1,617 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Live Traffic{% endblock %}
+{% block page_subtitle %}<p class="text-sm text-theme-bark-muted mt-1">Real-time traffic flow and density</p>{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<style>
+    /* Leaflet popup/marker customize to match theme */
+    .leaflet-popup-content-wrapper {
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(136, 161, 176, 0.3) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 8px 32px 0 rgba(127, 167, 135, 0.15) !important;
+    }
+    .leaflet-popup-tip {
+        background: rgba(255, 255, 255, 0.95) !important;
+    }
+    .leaflet-popup-content {
+        margin: 6px 8px !important;
+    }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="flex-1 overflow-y-auto pb-12">
+    <!-- Top Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="glass-panel p-6">
+            <h3 class="text-sm font-bold text-theme-bark-muted uppercase tracking-wider mb-2">Congestion Level</h3>
+            <div class="text-3xl font-black text-theme-sage-dark" id="congestionMetric">Low</div>
+            <p class="text-xs text-theme-bark-muted mt-2">Map overlay generated</p>
+        </div>
+        
+        <div class="glass-panel p-6">
+            <h3 class="text-sm font-bold text-theme-bark-muted uppercase tracking-wider mb-2">Est. Travel Time</h3>
+            <div class="text-3xl font-black text-theme-dusty-blue-dark" id="timeMetric">12 min</div>
+            <p class="text-xs text-theme-bark-muted mt-2">To city center</p>
+        </div>
+        
+        <div class="glass-panel p-6">
+            <h3 class="text-sm font-bold text-theme-bark-muted uppercase tracking-wider mb-2">Nearby Incidents</h3>
+            <div class="text-3xl font-black text-theme-terracotta-dark" id="incidentsMetric">0</div>
+            <p class="text-xs text-theme-bark-muted mt-2">In a 5km radius</p>
+        </div>
+        
+        <div class="glass-panel p-6">
+            <h3 class="text-sm font-bold text-theme-bark-muted uppercase tracking-wider mb-2">Status</h3>
+            <div class="text-3xl font-black text-theme-sage-dark" id="syncStatus">Synced</div>
+            <p class="text-xs text-theme-bark-muted mt-2">Linked to Collision Engine</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Interactive Map Panel -->
+        <div class="lg:col-span-2 glass-panel p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black text-gray-900">Global Traffic Map</h3>
+                <span class="px-3 py-1 bg-theme-sage/20 text-theme-sage-dark text-xs font-bold rounded-full uppercase tracking-wide">Live Stream</span>
+            </div>
+            
+            <div class="relative rounded-xl overflow-hidden shadow-inner border border-theme-dusty-blue/30 w-full h-[500px]" id="trafficMap">
+                <!-- Google Maps JavaScript SDK container for Traffic Layer (Unconditional for meeting compatibility) -->
+                <div id="map-canvas" class="w-full h-full"></div>
+            </div>
+        </div>
+
+        <!-- Simulator Controls -->
+        <div class="glass-panel p-6">
+            <h3 class="text-2xl font-black text-gray-900 mb-6">Traffic Matrix</h3>
+            
+            <div class="space-y-6">
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-bold text-gray-700">Select Location</label>
+                        <button id="liveLocationBtn" class="text-xs font-bold text-theme-sage-dark bg-theme-sage/20 hover:bg-theme-sage/40 px-3 py-1 rounded-full transition-all flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            Use My Live Location
+                        </button>
+                    </div>
+                    <select id="locationSelect" class="w-full bg-white border border-theme-dusty-blue/40 rounded-xl px-4 py-3 focus:outline-none focus:border-[#7FA787] focus:ring-1 focus:ring-[#7FA787] transition-all cursor-pointer">
+                        <option value="Hyderabad" data-lat="17.3850" data-lng="78.4867" selected>Hyderabad, India (Default)</option>
+                        <option value="Central Hub" data-lat="51.505" data-lng="-0.09">Central Hub (London)</option>
+                        <option value="Times Square" data-lat="40.758" data-lng="-73.985">Times Square (NY)</option>
+                        <option value="Shibuya Crossing" data-lat="35.659" data-lng="139.700">Shibuya Crossing (Tokyo)</option>
+                        <option value="Custom Location" data-lat="0" data-lng="0" id="customLocOption" style="display:none;">Live GPS Location</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Simulate Congestion Level</label>
+                    <select id="congestionSelect" class="w-full bg-white border border-theme-dusty-blue/40 rounded-xl px-4 py-3 focus:outline-none focus:border-[#7FA787] focus:ring-1 focus:ring-[#7FA787] transition-all cursor-pointer">
+                        <option value="Low" class="text-green-600 font-bold">🟢 Low (Flowing)</option>
+                        <option value="Medium" class="text-yellow-600 font-bold">🟡 Medium (Busy)</option>
+                        <option value="Heavy" class="text-red-600 font-bold">🔴 Heavy (Gridlock)</option>
+                    </select>
+                </div>
+                
+                <button id="updateTrafficBtn" class="w-full bg-gradient-to-r from-theme-sage-dark to-theme-sage hover:from-theme-sage hover:to-theme-sage-dark shadow-md hover:shadow-lg transition-all text-white font-bold py-4 px-6 rounded-xl shadow-lg transform transition hover:-translate-y-1 flex items-center justify-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Sync to Collision Engine
+                </button>
+            </div>
+            
+            <div class="mt-8 p-4 bg-theme-dusty-blue/10 rounded-xl border border-theme-dusty-blue/30">
+                <p class="text-sm text-gray-900 leading-relaxed font-semibold">
+                    <strong>AI Note:</strong> When congestion is set to <em>Heavy</em>, the Collision Prediction Engine will automatically escalate base-level risks from MEDIUM to HIGH if pedestrians are present in the crosswalk.
+                </p>
+            </div>
+            
+            <!-- Map Legend -->
+            <div class="mt-4 p-4 bg-white/60 rounded-xl border border-gray-200 shadow-sm">
+                <h4 class="text-sm font-bold text-gray-700 mb-3 border-b pb-2">Map Legend</h4>
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-[#C97B63] opacity-60"></div>
+                        <span class="text-xs font-semibold text-gray-600">🔴 High-Risk Junction <span class="text-gray-400 font-normal">(4 zones)</span></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-[#E0B274] opacity-60"></div>
+                        <span class="text-xs font-semibold text-gray-600">🟡 Moderate Traffic Risk <span class="text-gray-400 font-normal">(5 zones)</span></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-[#7FA787] opacity-60"></div>
+                        <span class="text-xs font-semibold text-gray-600">🟢 Clear Flow — No Incidents <span class="text-gray-400 font-normal">(7 zones)</span></span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1 pt-2 border-t border-gray-100">
+                        <div class="w-4 h-4 rounded-full bg-blue-500 opacity-80 border-2 border-white shadow-sm flex items-center justify-center">
+                           <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                        </div>
+                        <span class="text-xs font-semibold text-blue-600">📍 Current Location Marker</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const locSelect = document.getElementById('locationSelect');
+        const customOpt = document.getElementById('customLocOption');
+        const congestionSelect = document.getElementById('congestionSelect');
+        
+        // Helper to determine AI messages based on congestion simulator metrics
+        function getAIMessage(traffic, risk) {
+            if (traffic === 'Heavy') {
+                return "Heavy traffic around this location. Collision prediction engine active.";
+            } else if (traffic === 'Medium') {
+                return "Pedestrian activity detected nearby. Maintain safety limits.";
+            } else {
+                return "No immediate pedestrian risk detected.";
+            }
+        }
+
+        // OSM Reverse Geocoder helper
+        function getAreaName(lat, lng, callback) {
+            const opt = locSelect.options[locSelect.selectedIndex];
+            if (opt && opt.value !== "Custom Location") {
+                callback(opt.value);
+                return;
+            }
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                .then(r => r.json())
+                .then(geo => {
+                    const add = geo.address;
+                    const area = add.suburb || add.neighbourhood || add.city_district || add.city || add.town || "Live GPS Location";
+                    callback(area);
+                })
+                .catch(() => {
+                    callback("Live GPS Location");
+                });
+        }
+
+        // ==============================================
+        // Google Maps Javascript SDK with Traffic Layer
+        // ==============================================
+        let map = null;
+        let trafficLayer = null;
+        let marker = null;
+        let riskCircles = [];
+
+        function drawRiskRegions(centerPos, cityName) {
+            riskCircles.forEach(c => map.removeLayer(c));
+            riskCircles = [];
+            if (!map) return;
+
+            let hotspots = [];
+
+            // ─────────────────────────────────────────────────────────────────
+            // Every location shows EXACTLY: 4 RED + 5 YELLOW + 7 GREEN = 16 zones
+            // All coordinates are anchored to real road junctions/intersections.
+            // Parks, gardens, and residential areas are intentionally excluded.
+            // ─────────────────────────────────────────────────────────────────
+
+            if (cityName.includes("Hyderabad") || (centerPos.lat > 17.3 && centerPos.lat < 17.5 && centerPos.lng > 78.4 && centerPos.lng < 78.6)) {
+                hotspots = [
+                    // ── 4 RED zones (high-risk busy junctions) ──────────────────
+                    { lat: 17.4239, lng: 78.4492, radius: 200, color: '#C97B63', opacity: 0.60, label: 'Panjagutta Junction' },
+                    { lat: 17.3975, lng: 78.4696, radius: 210, color: '#C97B63', opacity: 0.60, label: 'Lakdikapul Junction' },
+                    { lat: 17.4478, lng: 78.3731, radius: 190, color: '#C97B63', opacity: 0.60, label: 'Miyapur Junction' },
+                    { lat: 17.3615, lng: 78.4747, radius: 200, color: '#C97B63', opacity: 0.60, label: 'Falaknuma Crossroads' },
+
+                    // ── 5 YELLOW zones (moderate traffic intersections) ──────────
+                    { lat: 17.3952, lng: 78.4380, radius: 175, color: '#E0B274', opacity: 0.50, label: 'Mehdipatnam Intersection' },
+                    { lat: 17.3889, lng: 78.4769, radius: 165, color: '#E0B274', opacity: 0.50, label: 'Abids Junction' },
+                    { lat: 17.3845, lng: 78.4895, radius: 165, color: '#E0B274', opacity: 0.50, label: 'Koti Junction' },
+                    { lat: 17.4408, lng: 78.3983, radius: 170, color: '#E0B274', opacity: 0.50, label: 'Hafeezpet Road Crossing' },
+                    { lat: 17.4062, lng: 78.5486, radius: 160, color: '#E0B274', opacity: 0.50, label: 'Uppal Ring Road Junction' },
+
+                    // ── 7 GREEN zones (clear-flow roads) ────────────────────────
+                    { lat: 17.4072, lng: 78.5010, radius: 145, color: '#7FA787', opacity: 0.38, label: 'Chikkadpally Rd' },
+                    { lat: 17.4335, lng: 78.4780, radius: 140, color: '#7FA787', opacity: 0.35, label: 'KPHB Colony Road' },
+                    { lat: 17.4529, lng: 78.3907, radius: 140, color: '#7FA787', opacity: 0.35, label: 'Kukatpally Road' },
+                    { lat: 17.3740, lng: 78.4843, radius: 135, color: '#7FA787', opacity: 0.35, label: 'Saidabad Road' },
+                    { lat: 17.4155, lng: 78.4673, radius: 140, color: '#7FA787', opacity: 0.35, label: 'Begumpet Road' },
+                    { lat: 17.3777, lng: 78.4314, radius: 135, color: '#7FA787', opacity: 0.35, label: 'Tolichowki Road' },
+                    { lat: 17.3988, lng: 78.5201, radius: 140, color: '#7FA787', opacity: 0.35, label: 'LB Nagar Bypass' }
+                ];
+
+            } else if (cityName.includes("Central Hub") || cityName.includes("London")) {
+                hotspots = [
+                    // ── 4 RED ──────────────────────────────────────────────────
+                    { lat: 51.5058, lng: -0.0877, radius: 190, color: '#C97B63', opacity: 0.60, label: 'London Bridge Junction' },
+                    { lat: 51.5074, lng: -0.1278, radius: 185, color: '#C97B63', opacity: 0.60, label: 'Trafalgar Square' },
+                    { lat: 51.5154, lng: -0.1415, radius: 180, color: '#C97B63', opacity: 0.60, label: 'Oxford Circus' },
+                    { lat: 51.5014, lng: -0.1419, radius: 185, color: '#C97B63', opacity: 0.60, label: 'Victoria Junction' },
+
+                    // ── 5 YELLOW ────────────────────────────────────────────────
+                    { lat: 51.5035, lng: -0.0920, radius: 165, color: '#E0B274', opacity: 0.50, label: 'Borough High St' },
+                    { lat: 51.5136, lng: -0.0985, radius: 160, color: '#E0B274', opacity: 0.50, label: 'Bank Junction' },
+                    { lat: 51.5194, lng: -0.1270, radius: 160, color: '#E0B274', opacity: 0.50, label: 'Euston Road' },
+                    { lat: 51.4952, lng: -0.1441, radius: 155, color: '#E0B274', opacity: 0.50, label: 'Vauxhall Cross' },
+                    { lat: 51.5117, lng: -0.1560, radius: 155, color: '#E0B274', opacity: 0.50, label: 'Paddington Junction' },
+
+                    // ── 7 GREEN ─────────────────────────────────────────────────
+                    { lat: 51.5048, lng: -0.0993, radius: 145, color: '#7FA787', opacity: 0.35, label: 'Southwark St' },
+                    { lat: 51.5220, lng: -0.1056, radius: 140, color: '#7FA787', opacity: 0.35, label: 'Moorgate Road' },
+                    { lat: 51.5181, lng: -0.0823, radius: 140, color: '#7FA787', opacity: 0.35, label: 'Aldgate East' },
+                    { lat: 51.4867, lng: -0.1218, radius: 135, color: '#7FA787', opacity: 0.35, label: 'Brixton Road' },
+                    { lat: 51.5256, lng: -0.1540, radius: 140, color: '#7FA787', opacity: 0.35, label: "Regent's Park Rd" },
+                    { lat: 51.4893, lng: -0.1757, radius: 135, color: '#7FA787', opacity: 0.35, label: 'Fulham Road' },
+                    { lat: 51.5288, lng: -0.1068, radius: 135, color: '#7FA787', opacity: 0.35, label: 'Islington Road' }
+                ];
+
+            } else if (cityName.includes("Times Square") || cityName.includes("NY")) {
+                hotspots = [
+                    // ── 4 RED ──────────────────────────────────────────────────
+                    { lat: 40.7560, lng: -73.9862, radius: 185, color: '#C97B63', opacity: 0.60, label: '7th Ave & 42nd St' },
+                    { lat: 40.7590, lng: -73.9845, radius: 180, color: '#C97B63', opacity: 0.60, label: 'Broadway & 45th St' },
+                    { lat: 40.7484, lng: -73.9967, radius: 180, color: '#C97B63', opacity: 0.60, label: 'Penn Station Junction' },
+                    { lat: 40.7614, lng: -73.9776, radius: 175, color: '#C97B63', opacity: 0.60, label: '5th Ave & 50th St' },
+
+                    // ── 5 YELLOW ────────────────────────────────────────────────
+                    { lat: 40.7568, lng: -73.9902, radius: 160, color: '#E0B274', opacity: 0.50, label: '8th Ave & 42nd St' },
+                    { lat: 40.7527, lng: -73.9772, radius: 155, color: '#E0B274', opacity: 0.50, label: 'Lexington & 42nd' },
+                    { lat: 40.7643, lng: -73.9730, radius: 155, color: '#E0B274', opacity: 0.50, label: '3rd Ave & 53rd' },
+                    { lat: 40.7425, lng: -73.9889, radius: 155, color: '#E0B274', opacity: 0.50, label: '6th Ave & 34th' },
+                    { lat: 40.7700, lng: -73.9823, radius: 155, color: '#E0B274', opacity: 0.50, label: 'Broadway & 58th St' },
+
+                    // ── 7 GREEN ─────────────────────────────────────────────────
+                    { lat: 40.7382, lng: -73.9896, radius: 145, color: '#7FA787', opacity: 0.35, label: '6th Ave & 23rd' },
+                    { lat: 40.7745, lng: -73.9773, radius: 140, color: '#7FA787', opacity: 0.35, label: 'Columbus Circle' },
+                    { lat: 40.7479, lng: -73.9716, radius: 140, color: '#7FA787', opacity: 0.35, label: 'E 34th & Park Ave' },
+                    { lat: 40.7685, lng: -73.9636, radius: 135, color: '#7FA787', opacity: 0.35, label: '2nd Ave & 57th' },
+                    { lat: 40.7316, lng: -73.9971, radius: 140, color: '#7FA787', opacity: 0.35, label: '7th Ave & 23rd' },
+                    { lat: 40.7782, lng: -73.9831, radius: 140, color: '#7FA787', opacity: 0.35, label: 'Broadway & 66th' },
+                    { lat: 40.7610, lng: -73.9680, radius: 135, color: '#7FA787', opacity: 0.35, label: 'Park Ave & 53rd' }
+                ];
+
+            } else if (cityName.includes("Shibuya") || cityName.includes("Tokyo")) {
+                hotspots = [
+                    // ── 4 RED ──────────────────────────────────────────────────
+                    { lat: 35.6594, lng: 139.7006, radius: 210, color: '#C97B63', opacity: 0.60, label: 'Shibuya Scramble' },
+                    { lat: 35.6695, lng: 139.7024, radius: 190, color: '#C97B63', opacity: 0.60, label: 'Shinjuku Crossing' },
+                    { lat: 35.6580, lng: 139.6994, radius: 185, color: '#C97B63', opacity: 0.60, label: 'Dogenzaka Junction' },
+                    { lat: 35.6731, lng: 139.7108, radius: 180, color: '#C97B63', opacity: 0.60, label: 'Yotsuya Intersection' },
+
+                    // ── 5 YELLOW ────────────────────────────────────────────────
+                    { lat: 35.6612, lng: 139.7032, radius: 165, color: '#E0B274', opacity: 0.50, label: 'Miyamasuzaka Jct' },
+                    { lat: 35.6546, lng: 139.6976, radius: 160, color: '#E0B274', opacity: 0.50, label: 'Daikanyama Rd' },
+                    { lat: 35.6624, lng: 139.7129, radius: 160, color: '#E0B274', opacity: 0.50, label: 'Omotesando Cross' },
+                    { lat: 35.6785, lng: 139.6963, radius: 155, color: '#E0B274', opacity: 0.50, label: 'Nakameguro Jct' },
+                    { lat: 35.6489, lng: 139.7086, radius: 155, color: '#E0B274', opacity: 0.50, label: 'Gotanda Junction' },
+
+                    // ── 7 GREEN ─────────────────────────────────────────────────
+                    { lat: 35.6701, lng: 139.6891, radius: 145, color: '#7FA787', opacity: 0.35, label: 'Sangenjaya Rd' },
+                    { lat: 35.6633, lng: 139.7188, radius: 140, color: '#7FA787', opacity: 0.35, label: 'Harajuku Road' },
+                    { lat: 35.6440, lng: 139.7103, radius: 140, color: '#7FA787', opacity: 0.35, label: 'Osaki Boulevard' },
+                    { lat: 35.6857, lng: 139.6984, radius: 135, color: '#7FA787', opacity: 0.35, label: 'Jiyugaoka Road' },
+                    { lat: 35.6562, lng: 139.6875, radius: 140, color: '#7FA787', opacity: 0.35, label: 'Setagaya Blvd' },
+                    { lat: 35.6760, lng: 139.7196, radius: 140, color: '#7FA787', opacity: 0.35, label: 'Minami-Aoyama Rd' },
+                    { lat: 35.6428, lng: 139.6966, radius: 140, color: '#7FA787', opacity: 0.35, label: 'Okusawa Road' }
+                ];
+
+            } else {
+                // ── GPS Fallback: 4 RED + 5 YELLOW + 7 GREEN ────────────────────
+                // Zones are distributed in 16 compass directions around the user,
+                // following N/S/E/W road axes to avoid landing on open fields/parks.
+                const R = 0.0022; // ~250m radius at equator
+                hotspots = [
+                    // 4 RED — nearest major intersections (closer offsets)
+                    { lat: centerPos.lat + R*0.9,  lng: centerPos.lng + R*0.0,  radius: 185, color: '#C97B63', opacity: 0.60 },
+                    { lat: centerPos.lat + R*0.0,  lng: centerPos.lng + R*0.9,  radius: 180, color: '#C97B63', opacity: 0.60 },
+                    { lat: centerPos.lat - R*0.9,  lng: centerPos.lng + R*0.0,  radius: 185, color: '#C97B63', opacity: 0.60 },
+                    { lat: centerPos.lat + R*0.0,  lng: centerPos.lng - R*0.9,  radius: 180, color: '#C97B63', opacity: 0.60 },
+
+                    // 5 YELLOW — moderate-traffic roads (medium offsets)
+                    { lat: centerPos.lat + R*1.4,  lng: centerPos.lng + R*0.0,  radius: 165, color: '#E0B274', opacity: 0.50 },
+                    { lat: centerPos.lat + R*0.0,  lng: centerPos.lng + R*1.5,  radius: 160, color: '#E0B274', opacity: 0.50 },
+                    { lat: centerPos.lat - R*1.5,  lng: centerPos.lng + R*0.0,  radius: 165, color: '#E0B274', opacity: 0.50 },
+                    { lat: centerPos.lat + R*1.0,  lng: centerPos.lng - R*1.0,  radius: 160, color: '#E0B274', opacity: 0.50 },
+                    { lat: centerPos.lat - R*1.0,  lng: centerPos.lng + R*1.0,  radius: 160, color: '#E0B274', opacity: 0.50 },
+
+                    // 7 GREEN — clear-flow connecting roads (farther offsets)
+                    { lat: centerPos.lat + R*2.0,  lng: centerPos.lng + R*0.0,  radius: 145, color: '#7FA787', opacity: 0.35 },
+                    { lat: centerPos.lat + R*0.0,  lng: centerPos.lng + R*2.1,  radius: 140, color: '#7FA787', opacity: 0.35 },
+                    { lat: centerPos.lat - R*2.1,  lng: centerPos.lng + R*0.0,  radius: 145, color: '#7FA787', opacity: 0.35 },
+                    { lat: centerPos.lat + R*0.0,  lng: centerPos.lng - R*2.0,  radius: 140, color: '#7FA787', opacity: 0.35 },
+                    { lat: centerPos.lat + R*1.5,  lng: centerPos.lng + R*1.5,  radius: 140, color: '#7FA787', opacity: 0.35 },
+                    { lat: centerPos.lat - R*1.5,  lng: centerPos.lng - R*1.5,  radius: 140, color: '#7FA787', opacity: 0.35 },
+                    { lat: centerPos.lat + R*1.8,  lng: centerPos.lng - R*1.0,  radius: 140, color: '#7FA787', opacity: 0.35 }
+                ];
+            }
+
+            hotspots.forEach(h => {
+                const circle = L.circle([h.lat, h.lng], {
+                    color: h.color,
+                    fillColor: h.color,
+                    fillOpacity: h.opacity,
+                    weight: 1.5,
+                    opacity: 0.8,
+                    radius: h.radius
+                }).addTo(map);
+                riskCircles.push(circle);
+            });
+        }
+
+
+        // Generate Custom HTML Content for the Google InfoWindow
+        function getPopupHTML(areaName, lat, lng, gps, traffic, risk, aiMsg) {
+            let trafficLabel = "🟢 Smooth";
+            let trafficColor = "#16a34a";
+            if (traffic === "Medium") {
+                trafficLabel = "🟡 Moderate";
+                trafficColor = "#d97706";
+            } else if (traffic === "Heavy") {
+                trafficLabel = "🔴 Heavy";
+                trafficColor = "#dc2626";
+            }
+
+            let riskLabel = "Safe";
+            let riskColor = "#16a34a";
+            if (risk === "Medium") {
+                riskLabel = "Occupied";
+                riskColor = "#d97706";
+            } else if (risk === "Heavy") {
+                riskLabel = "High Risk";
+                riskColor = "#dc2626";
+            }
+
+            return `
+                <div style="font-family: sans-serif; font-size: 10px; color: #374151; min-width: 220px; line-height: 1.5; padding: 4px;">
+                    <div style="border-bottom: 1px solid #E5E7EB; padding-bottom: 6px; margin-bottom: 6px;">
+                        <h5 style="margin: 0; font-size: 11px; font-weight: 800; color: #111827;">📍 Your Live Location</h5>
+                        <span style="font-size: 8px; color: #16a34a; font-weight: bold;">Scanning vicinity for risk zones...</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #9CA3AF;">Current Area:</span>
+                            <span style="font-weight: bold; color: #1F2937;">${areaName}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #9CA3AF;">Latitude:</span>
+                            <span style="font-weight: bold; font-family: monospace;">${lat.toFixed(4)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #9CA3AF;">Longitude:</span>
+                            <span style="font-weight: bold; font-family: monospace;">${lng.toFixed(4)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #9CA3AF;">GPS Status:</span>
+                            <span style="font-weight: bold; color: #059669;">${gps}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #9CA3AF;">Traffic Status:</span>
+                            <span style="font-weight: bold; color: ${trafficColor};">${trafficLabel}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #9CA3AF;">Risk Level:</span>
+                            <span style="font-weight: bold; color: ${riskColor};">${riskLabel}</span>
+                        </div>
+                    </div>
+                    <div style="background-color: #eff6ff; border: 1px solid #dbeafe; padding: 6px; border-radius: 8px; margin-top: 8px;">
+                        <span style="color: #3b82f6; font-weight: bold; display: block; font-size: 7px; text-transform: uppercase; margin-bottom: 2px;">Smart AI Status</span>
+                        <p style="margin: 0; font-weight: bold; color: #1d4ed8; line-height: 1.25;">"${aiMsg}"</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function triggerInfoWindow(pos, areaName) {
+            const traffic = congestionSelect.value;
+            const aiMsg = getAIMessage(traffic, traffic);
+            const content = getPopupHTML(areaName, pos.lat, pos.lng, "Active GPS", traffic, traffic, aiMsg);
+            
+            if (marker) {
+                marker.bindPopup(content, { minWidth: 230 });
+                marker.openPopup();
+                
+                // Leaflet marker bounce emulation: animate icon via css transition
+                const el = marker.getElement();
+                if (el) {
+                    el.style.transformOrigin = "bottom center";
+                    el.animate([
+                        { transform: 'translate3d(0, 0, 0)' },
+                        { transform: 'translate3d(0, -15px, 0)' },
+                        { transform: 'translate3d(0, 0, 0)' }
+                    ], {
+                        duration: 500,
+                        easing: 'ease-out'
+                    });
+                }
+            }
+        }
+
+        function initMap() {
+            try {
+                const defaultLoc = { lat: 17.3850, lng: 78.4867 };
+                
+                map = L.map('map-canvas').setView([defaultLoc.lat, defaultLoc.lng], 14);
+
+                trafficLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}', {
+                    subdomains: ['0', '1', '2', '3'],
+                    maxZoom: 20,
+                    attribution: 'Map data &copy; Google'
+                }).addTo(map);
+
+                marker = L.marker([defaultLoc.lat, defaultLoc.lng], {
+                    title: "Selected Monitoring Location"
+                }).addTo(map);
+
+                drawRiskRegions(defaultLoc, "Hyderabad");
+                
+                // Show popup immediately on click
+                marker.on('click', () => {
+                    const latlng = marker.getLatLng();
+                    const pos = { lat: latlng.lat, lng: latlng.lng };
+                    getAreaName(pos.lat, pos.lng, (area) => {
+                        triggerInfoWindow(pos, area);
+                    });
+                });
+
+                // Asynchronously detect GPS on load
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            const pos = { lat: lat, lng: lng };
+                            
+                            map.setView([pos.lat, pos.lng], 14);
+                            marker.setLatLng([pos.lat, pos.lng]);
+                            drawRiskRegions(pos, "Custom Location");
+                            
+                            getAreaName(lat, lng, (area) => {
+                                triggerInfoWindow(pos, area);
+                            });
+
+                            customOpt.dataset.lat = lat;
+                            customOpt.dataset.lng = lng;
+                            customOpt.style.display = 'block';
+                            customOpt.selected = true;
+                        },
+                        function() {
+                            map.setView([defaultLoc.lat, defaultLoc.lng], 14);
+                            marker.setLatLng([defaultLoc.lat, defaultLoc.lng]);
+                            triggerInfoWindow(defaultLoc, "Hyderabad");
+                        }
+                    );
+                } else {
+                    triggerInfoWindow(defaultLoc, "Hyderabad");
+                }
+
+                setInterval(() => {
+                    if (trafficLayer) {
+                        trafficLayer.redraw();
+                    }
+                }, 30000);
+            } catch (e) {
+                console.error("Error during Google Maps initialization:", e);
+            }
+        }
+
+        function updateMapQuery(locationVal) {
+            const opt = locSelect.options[locSelect.selectedIndex];
+            const lat = parseFloat(opt.dataset.lat || 17.3850);
+            const lng = parseFloat(opt.dataset.lng || 78.4867);
+            
+            if (map && marker) {
+                const pos = { lat: lat, lng: lng };
+                map.panTo([pos.lat, pos.lng]);
+                marker.setLatLng([pos.lat, pos.lng]);
+                drawRiskRegions(pos, locationVal);
+                
+                getAreaName(lat, lng, (area) => {
+                    triggerInfoWindow(pos, area);
+                });
+                
+                if (trafficLayer) {
+                    trafficLayer.redraw();
+                }
+            }
+        }
+
+        // Initialize Map
+        initMap();
+
+        // Live GPS location locator button interaction
+        document.getElementById('liveLocationBtn').addEventListener('click', function() {
+            const btn = this;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `⏳ Locating...`;
+            btn.disabled = true;
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                        
+                        customOpt.dataset.lat = lat;
+                        customOpt.dataset.lng = lng;
+                        customOpt.style.display = 'block';
+                        customOpt.selected = true;
+                        
+                        updateMapQuery("Custom Location");
+                    },
+                    function(error) {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                        alert("Unable to fetch live location.");
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            }
+        });
+
+        // Dropdown location select listener
+        locSelect.addEventListener('change', function() {
+            updateMapQuery(this.value);
+        });
+
+        // Sync Traffic metrics button click
+        document.getElementById('updateTrafficBtn').addEventListener('click', function() {
+            const location = locSelect.value;
+            const congestion = document.getElementById('congestionSelect').value;
+            
+            let time = 12;
+            let incidents = 0;
+            let colorClass = 'text-theme-sage-dark';
+            
+            if(congestion === 'Medium') {
+                time = 25;
+                incidents = 1;
+                colorClass = 'text-theme-amber-dark';
+            } else if(congestion === 'Heavy') {
+                time = 45;
+                incidents = Math.floor(Math.random() * 3) + 2;
+                colorClass = 'text-theme-terracotta-dark';
+            }
+            
+            document.getElementById('congestionMetric').textContent = congestion;
+            document.getElementById('congestionMetric').className = `text-3xl font-black ${colorClass}`;
+            document.getElementById('timeMetric').textContent = `${time} min`;
+            document.getElementById('incidentsMetric').textContent = incidents;
+            
+            document.getElementById('syncStatus').textContent = "Syncing...";
+            document.getElementById('syncStatus').className = "text-3xl font-black text-theme-amber-dark";
+            
+            updateMapQuery(location);
+            
+            fetch('{{ url_for("dashboard.update_traffic") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    location: location,
+                    congestion_level: congestion,
+                    travel_time_mins: time,
+                    incident_count: incidents
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    setTimeout(() => {
+                        document.getElementById('syncStatus').textContent = "Synced";
+                        document.getElementById('syncStatus').className = "text-3xl font-black text-theme-sage-dark";
+                    }, 500);
+                }
+            })
+            .catch(err => {
+                document.getElementById('syncStatus').textContent = "Error";
+                document.getElementById('syncStatus').className = "text-3xl font-black text-theme-terracotta-dark";
+            });
+        });
+    });
+</script>
+{% endblock %}

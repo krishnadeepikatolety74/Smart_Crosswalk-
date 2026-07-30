@@ -1,0 +1,227 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Upload Video{% endblock %}
+{% block page_subtitle %}<p class="text-sm text-theme-bark-muted mt-1">Upload a video for AI analysis</p>{% endblock %}
+
+{% block dashboard_content %}
+{% if error %}
+<div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-3 shadow-sm">
+    <div class="w-6 h-6 flex items-center justify-center text-red-500 flex-shrink-0 mt-0.5">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+    </div>
+    <div>
+        <p class="font-bold text-red-800 text-sm">Processing Error</p>
+        <p class="text-red-700 text-xs mt-1">{{ error }}</p>
+    </div>
+</div>
+{% endif %}
+
+{% if not processed_video_url %}
+<div class="glass-panel p-8 flex flex-col items-center justify-center border-2 border-dashed border-theme-dusty-blue/40 min-h-[400px]">
+    <div class="w-16 h-16 rounded-2xl bg-theme-dusty-blue/15 flex items-center justify-center mb-4">
+        <svg class="w-8 h-8 text-theme-dusty-blue-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+    </div>
+    <h3 class="text-xl font-bold text-theme-bark mb-2">Drag & drop a video here</h3>
+    <p class="text-theme-bark-muted mb-6 text-center max-w-md">or click to browse. Supports MP4, AVI, MKV (max 500MB).</p>
+    
+    <form action="{{ url_for('dashboard.upload_video') }}" method="POST" enctype="multipart/form-data" class="flex flex-col items-center w-full max-w-xs gap-3">
+        <label class="btn-primary px-8 py-3 cursor-pointer shadow-md inline-block text-center w-full">
+            Choose File
+            <input type="file" name="video" class="hidden" accept="video/mp4,video/x-m4v,video/*" onchange="this.form.submit()">
+        </label>
+        <button type="button" onclick="runDemoVideo()" class="w-full py-2.5 px-6 rounded-xl border-2 border-theme-dusty-blue/40 text-theme-bark font-bold text-xs hover:bg-theme-dusty-blue/10 transition-all flex items-center justify-center gap-1.5 shadow-sm">
+            🎬 Run with Default Demo Video
+        </button>
+        <p class="text-[10px] text-theme-bark-muted text-center mt-1">Supported formats: MP4, AVI, MKV (Max 500MB)</p>
+    </form>
+</div>
+
+
+{% else %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="glass-panel p-6">
+        <h3 class="text-xl font-bold text-theme-bark mb-4">Processed Video</h3>
+        <video muted loop playsinline controls class="w-full h-auto rounded-lg shadow-md mb-4 border border-theme-dusty-blue/30">
+            <source src="{{ processed_video_url }}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <a href="{{ processed_video_url }}" download class="btn-primary px-6 py-2 inline-block shadow-md text-center w-full">Download Processed Video</a>
+        
+        {% if processed_snapshot_url %}
+        <div class="mt-6 border-t border-theme-dusty-blue/20 pt-6">
+            <h4 class="text-md font-bold text-theme-bark mb-3 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-theme-sage-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                Peak Detection Snapshot
+            </h4>
+            <img src="{{ processed_snapshot_url }}" alt="Peak Detection Snapshot" class="w-full h-auto rounded-lg shadow-md border border-theme-dusty-blue/30 select-none">
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="glass-panel p-6">
+        <h3 class="text-xl font-bold text-theme-bark mb-4">Detection History (Peak Counts)</h3>
+        
+        <div class="bg-white/60 p-4 rounded-xl shadow-inner border border-theme-dusty-blue/20 mb-4">
+            <p class="text-sm font-bold text-theme-bark-muted uppercase tracking-wider mb-1">Max Objects Detected Concurrently</p>
+            <p class="text-3xl font-black text-gray-600 hover:text-theme-sage-dark transition-colors">{{ total_count }}</p>
+        </div>
+        
+        <h4 class="text-md font-bold text-theme-bark-muted mb-3">Detected Objects:</h4>
+        {% if detections %}
+        <ul class="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+            {% for det in detections %}
+            <li class="flex justify-between items-center p-3 bg-white/50 rounded-lg border border-theme-dusty-blue/15 hover:bg-theme-dusty-blue/10 transition-colors">
+                <span class="font-bold text-gray-600 hover:text-theme-sage-dark transition-colors capitalize">{{ det.class_name }}</span>
+                <span class="text-sm font-semibold bg-theme-dusty-blue/15 text-theme-bark py-1 px-2 rounded-full">
+                    Peak Count: {{ det.count }} | Avg Conf: {{ "%.1f"|format(det.confidence * 100) }}%
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-theme-bark-muted italic">No target objects were detected in this video.</p>
+        {% endif %}
+        
+        <div class="mt-6 pt-4 border-t border-theme-dusty-blue/30 text-center">
+            <a href="{{ url_for('dashboard.upload_video') }}" class="text-theme-bark-muted font-bold hover:text-theme-bark underline">Upload Another Video</a>
+        </div>
+    </div>
+</div>
+
+{% if vehicle_trend and risk_trend %}
+<!-- AI Surveillance Trends Charts Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+    <div class="glass-panel p-6">
+        <h3 class="text-xl font-bold text-theme-bark mb-4">Vehicle Count Trend</h3>
+        <div class="w-full h-[220px]">
+            <canvas id="vehicleTrendChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="glass-panel p-6">
+        <h3 class="text-xl font-bold text-theme-bark mb-4">Collision Risk Timeline (%)</h3>
+        <div class="w-full h-[220px]">
+            <canvas id="riskTimelineChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<script>
+function runDemoVideo() {
+    // Show a quick loading state on the button
+    const btn = document.querySelector('button[onclick="runDemoVideo()"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `⏳ Initializing YOLOv10n processing...`;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url_for('dashboard.upload_video') }}";
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'demo';
+    input.value = 'true';
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Chart.js initialization for processed timelines
+{% if vehicle_trend and risk_trend %}
+document.addEventListener('DOMContentLoaded', function() {
+    const labels = Array.from({length: 60}, (_, i) => i + 1);
+    
+    // 1. Vehicle Count Trend Chart
+    const ctxVeh = document.getElementById('vehicleTrendChart').getContext('2d');
+    new Chart(ctxVeh, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Vehicles',
+                data: {{ vehicle_trend|tojson }},
+                borderColor: '#7FA787',
+                backgroundColor: 'rgba(127, 167, 135, 0.15)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        callback: function(val, index) {
+                            const label = labels[index];
+                            return (label === 1 || (label - 1) % 3 === 0) ? label : '';
+                        },
+                        font: { size: 9 }
+                    }
+                },
+                y: {
+                    min: 0,
+                    suggestedMax: 6,
+                    ticks: { font: { size: 9 } }
+                }
+            }
+        }
+    });
+
+    // 2. Collision Risk Timeline Chart
+    const ctxRisk = document.getElementById('riskTimelineChart').getContext('2d');
+    new Chart(ctxRisk, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Risk %',
+                data: {{ risk_trend|tojson }},
+                borderColor: '#C97B63',
+                backgroundColor: 'rgba(201, 123, 99, 0.15)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        callback: function(val, index) {
+                            const label = labels[index];
+                            return (label === 1 || (label - 1) % 3 === 0) ? label : '';
+                        },
+                        font: { size: 9 }
+                    }
+                },
+                y: {
+                    min: 0,
+                    max: 100,
+                    ticks: { font: { size: 9 } }
+                }
+            }
+        }
+    });
+});
+{% endif %}
+</script>
+{% endblock %}

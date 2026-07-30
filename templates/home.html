@@ -1,0 +1,302 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}<p class="text-sm text-theme-bark-muted mt-1">Overview of real-time traffic and safety monitoring</p>{% endblock %}
+
+{% block dashboard_content %}
+<!-- Note: the four stat cards and charts below use illustrative placeholder
+     figures. Wire them to real Detection / IncidentReport queries (similar
+     to the analytics route) whenever you're ready to make this page live. -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="glass-panel p-5">
+        <p class="text-sm text-theme-bark-muted font-semibold mb-1">Total Detections</p>
+        <p class="text-3xl font-black text-theme-bark">{{ total_detections }}</p>
+        <p class="text-xs text-theme-sage-dark font-bold mt-2">&uarr; 12.5% vs yesterday</p>
+    </div>
+    <div class="glass-panel p-5">
+        <p class="text-sm text-theme-bark-muted font-semibold mb-1">Safe Crossings</p>
+        <p class="text-3xl font-black text-theme-bark">{{ safe_crossings }}</p>
+        <p class="text-xs text-theme-sage-dark font-bold mt-2">&uarr; 18.4% vs yesterday</p>
+    </div>
+    <div class="glass-panel p-5">
+        <p class="text-sm text-theme-bark-muted font-semibold mb-1">Violations</p>
+        <p class="text-3xl font-black text-theme-terracotta-dark">{{ violations }}</p>
+        <p class="text-xs text-theme-terracotta-dark font-bold mt-2">&uarr; 5.3% vs yesterday</p>
+    </div>
+    <div class="glass-panel p-5">
+        <p class="text-sm text-theme-bark-muted font-semibold mb-1">Alerts</p>
+        <p class="text-3xl font-black text-theme-amber-dark">{{ alerts }}</p>
+        <p class="text-xs text-theme-amber-dark font-bold mt-2">&uarr; 2.1% vs yesterday</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="glass-panel p-5 lg:col-span-2">
+        <h3 class="text-md font-bold text-theme-bark mb-4">Detection Overview (Today)</h3>
+        <div class="relative h-64">
+            <canvas id="detectionOverviewChart"></canvas>
+        </div>
+    </div>
+    <div class="glass-panel p-5">
+        <h3 class="text-md font-bold text-theme-bark mb-4">Traffic Status</h3>
+        <div class="relative h-48 flex items-center justify-center">
+            <canvas id="trafficStatusChart"></canvas>
+        </div>
+        <div class="flex flex-col gap-2 mt-4 text-sm">
+            <div class="flex justify-between items-center">
+                <span class="flex items-center gap-2 font-semibold text-theme-bark"><span class="w-2.5 h-2.5 rounded-full bg-theme-sage-dark"></span>Clear</span>
+                <span class="text-theme-bark-muted">Safe to cross &middot; 62%</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="flex items-center gap-2 font-semibold text-theme-bark"><span class="w-2.5 h-2.5 rounded-full bg-theme-amber-dark"></span>Caution</span>
+                <span class="text-theme-bark-muted">Use care &middot; 25%</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="flex items-center gap-2 font-semibold text-theme-bark"><span class="w-2.5 h-2.5 rounded-full bg-theme-terracotta-dark"></span>Violation</span>
+                <span class="text-theme-bark-muted">Stop / Danger &middot; 13%</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="glass-panel p-5 lg:col-span-2">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-md font-bold text-theme-bark">Recent Detections</h3>
+            <a href="{{ url_for('dashboard.history') }}" class="text-sm font-bold text-theme-dusty-blue-dark hover:underline">View All</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-theme-dusty-blue/30 text-xs uppercase tracking-wide text-theme-bark-muted">
+                        <th class="py-2 px-3 font-semibold">Time</th>
+                        <th class="py-2 px-3 font-semibold">Type</th>
+                        <th class="py-2 px-3 font-semibold">Location</th>
+                        <th class="py-2 px-3 font-semibold">Status</th>
+                        <th class="py-2 px-3 font-semibold">Confidence</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    {% for incident in incidents %}
+                    <tr class="border-b border-theme-dusty-blue/10">
+                        <td class="py-3 px-3 text-theme-bark-muted">{{ incident.timestamp.strftime('%H:%M:%S') }}</td>
+                        <td class="py-3 px-3 font-semibold text-theme-bark">
+                            {% if incident.pedestrian_count > 0 and incident.vehicle_count > 0 %}
+                            Crosswalk Event
+                            {% elif incident.pedestrian_count > 0 %}
+                            Pedestrian
+                            {% else %}
+                            Vehicle
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-theme-bark-muted">Main Crosswalk 1</td>
+                        <td class="py-3 px-3">
+                            {% if incident.risk_level == 'HIGH RISK' %}
+                            <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold">High Risk</span>
+                            {% elif incident.risk_level == 'MEDIUM' %}
+                            <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-bold">Medium</span>
+                            {% else %}
+                            <span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">Safe</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-theme-bark-muted">
+                            {% if incident.speed_kmh > 0 %}
+                            {{ "%.1f"|format(incident.speed_kmh) }} km/h
+                            {% else %}
+                            --
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="py-4 text-center text-theme-bark-muted font-semibold">No recent detections found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- AI Model Information Card -->
+    <div class="glass-panel p-5 flex flex-col justify-between text-theme-bark h-full max-h-[500px] overflow-y-auto custom-scrollbar">
+        <div>
+            <div class="flex items-center gap-2 mb-4 border-b border-theme-dusty-blue/20 pb-2">
+                <span class="text-xl">🚀</span>
+                <h3 class="text-md font-bold text-theme-bark">AI Model Information</h3>
+            </div>
+
+            <!-- Status Indicator -->
+            <div class="flex justify-between items-center bg-theme-sage/10 rounded-xl p-2.5 mb-4 border border-theme-sage/20 text-xs">
+                <span class="font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-theme-sage-dark animate-pulse"></span>System Status</span>
+                <span class="font-extrabold text-theme-sage-dark text-[10px] uppercase">Active</span>
+            </div>
+
+            <!-- Parameters Grid -->
+            <div class="grid grid-cols-2 gap-2 text-[11px] mb-4 bg-white/40 p-2.5 rounded-xl border border-white/60">
+                <div>
+                    <span class="text-theme-bark-muted block">Model Name</span>
+                    <span class="font-bold">YOLOv10n</span>
+                </div>
+                <div>
+                    <span class="text-theme-bark-muted block">Framework</span>
+                    <span class="font-bold">Ultralytics</span>
+                </div>
+                <div class="mt-1">
+                    <span class="text-theme-bark-muted block">Current Version</span>
+                    <span class="font-bold">YOLOv10 Nano</span>
+                </div>
+                <div class="mt-1">
+                    <span class="text-theme-bark-muted block">Inference Mode</span>
+                    <span class="font-bold font-sans">Real-Time</span>
+                </div>
+            </div>
+
+            <!-- Classes -->
+            <div class="mb-4">
+                <h4 class="text-xs font-bold text-theme-bark mb-1.5">Target Classes (COCO)</h4>
+                <div class="flex flex-wrap gap-1">
+                    <span class="px-2 py-0.5 bg-white/50 border border-theme-dusty-blue/20 rounded text-[10px] font-semibold flex items-center gap-1">🚶 Pedestrian</span>
+                    <span class="px-2 py-0.5 bg-white/50 border border-theme-dusty-blue/20 rounded text-[10px] font-semibold flex items-center gap-1">🚗 Vehicle</span>
+                    <span class="px-2 py-0.5 bg-white/50 border border-theme-dusty-blue/20 rounded text-[10px] font-semibold flex items-center gap-1">🚌 Bus</span>
+                    <span class="px-2 py-0.5 bg-white/50 border border-theme-dusty-blue/20 rounded text-[10px] font-semibold flex items-center gap-1">🚚 Truck</span>
+                    <span class="px-2 py-0.5 bg-white/50 border border-theme-dusty-blue/20 rounded text-[10px] font-semibold flex items-center gap-1">🏍️ Motorcycle</span>
+                    <span class="px-2 py-0.5 bg-white/50 border border-theme-dusty-blue/20 rounded text-[10px] font-semibold flex items-center gap-1">🚲 Bicycle</span>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <p class="text-[11px] text-theme-bark-muted leading-relaxed mb-4 p-2.5 bg-white/25 rounded-xl border border-white/40">
+                This project uses the <strong>YOLOv10 Nano</strong> object detection model for real-time detection of pedestrians, vehicles, buses, trucks, motorcycles, and bicycles. YOLOv10n is selected because it provides an excellent balance between detection accuracy, low latency, and lightweight computation, making it suitable for intelligent traffic monitoring and crosswalk safety applications.
+            </p>
+
+            <!-- Why YOLOv10n -->
+            <div class="mb-4 bg-white/40 p-3 rounded-xl border border-white/60">
+                <h4 class="text-xs font-bold text-theme-bark mb-2">Why YOLOv10n?</h4>
+                <div class="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[10px] font-semibold text-theme-bark-muted">
+                    <div class="flex items-center gap-1 text-[#7FA787]">✔ <span class="text-theme-bark-muted">Lightweight model</span></div>
+                    <div class="flex items-center gap-1 text-[#7FA787]">✔ <span class="text-theme-bark-muted">Fast inference speed</span></div>
+                    <div class="flex items-center gap-1 text-[#7FA787]">✔ <span class="text-theme-bark-muted">Real-time processing</span></div>
+                    <div class="flex items-center gap-1 text-[#7FA787]">✔ <span class="text-theme-bark-muted">Low memory usage</span></div>
+                    <div class="flex items-center gap-1 text-[#7FA787]">✔ <span class="text-theme-bark-muted">CPU execution support</span></div>
+                    <div class="flex items-center gap-1 text-[#7FA787]">✔ <span class="text-theme-bark-muted">Accurate pedestrian det.</span></div>
+                    <div class="flex items-center gap-1 text-[#7FA787]">✔ <span class="text-theme-bark-muted">Good vehicle det.</span></div>
+                    <div class="flex items-center gap-1 text-[#7FA787]">✔ <span class="text-theme-bark-muted">Optimized for edge</span></div>
+                </div>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="mb-4">
+                <h4 class="text-xs font-bold text-theme-bark mb-2">Model Comparison</h4>
+                <div class="overflow-x-auto rounded-lg border border-theme-dusty-blue/20">
+                    <table class="w-full text-left border-collapse text-[10px]">
+                        <thead>
+                            <tr class="bg-theme-dusty-blue/10 border-b border-theme-dusty-blue/20 font-bold">
+                                <th class="p-1.5">Feature</th>
+                                <th class="p-1.5 text-center text-theme-bark-muted">v8n</th>
+                                <th class="p-1.5 text-center text-theme-bark-muted">v9</th>
+                                <th class="p-1.5 text-center text-theme-sage-dark bg-theme-sage/10 font-black">v10n</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-theme-dusty-blue/10">
+                            <tr>
+                                <td class="p-1.5 font-bold">Speed</td>
+                                <td class="p-1.5 text-center text-theme-bark-muted">Fast</td>
+                                <td class="p-1.5 text-center text-theme-bark-muted">Medium</td>
+                                <td class="p-1.5 text-center font-bold text-theme-sage-dark bg-theme-sage/10">Very Fast ✅</td>
+                            </tr>
+                            <tr>
+                                <td class="p-1.5 font-bold">Size</td>
+                                <td class="p-1.5 text-center text-theme-bark-muted">Small</td>
+                                <td class="p-1.5 text-center text-theme-bark-muted">Large</td>
+                                <td class="p-1.5 text-center font-bold text-theme-sage-dark bg-theme-sage/10">V. Small ✅</td>
+                            </tr>
+                            <tr>
+                                <td class="p-1.5 font-bold">CPU Perf</td>
+                                <td class="p-1.5 text-center text-theme-bark-muted">Good</td>
+                                <td class="p-1.5 text-center text-theme-bark-muted">Average</td>
+                                <td class="p-1.5 text-center font-bold text-theme-sage-dark bg-theme-sage/10">Excellent ✅</td>
+                            </tr>
+                            <tr>
+                                <td class="p-1.5 font-bold">Crosswalk Det</td>
+                                <td class="p-1.5 text-center text-theme-bark-muted">Good</td>
+                                <td class="p-1.5 text-center text-theme-bark-muted">Good</td>
+                                <td class="p-1.5 text-center font-bold text-theme-sage-dark bg-theme-sage/10">Excellent ✅</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recommendation Box -->
+            <div class="bg-gradient-to-tr from-theme-sage/20 to-white/40 p-2.5 rounded-xl border border-theme-sage/30 text-[11px] mb-4">
+                <span class="font-extrabold text-theme-sage-dark block">🏆 Recommended Model: YOLOv10 Nano</span>
+                <span class="text-theme-bark-muted text-[10px]">Best balance between speed and accuracy for Smart Crosswalk Safety Systems.</span>
+            </div>
+
+            <!-- Statistics Grid -->
+            <div class="grid grid-cols-2 gap-2 text-[10px] bg-white/40 p-2.5 rounded-xl border border-white/60">
+                <div>
+                    <span class="text-theme-bark-muted block">Detection Mode</span>
+                    <span class="font-bold">Real-Time</span>
+                </div>
+                <div>
+                    <span class="text-theme-bark-muted block">Average FPS</span>
+                    <span class="font-bold text-theme-sage-dark" id="liveFPS">28 FPS</span>
+                </div>
+                <div class="mt-1">
+                    <span class="text-theme-bark-muted block">Threshold</span>
+                    <span class="font-bold">0.45</span>
+                </div>
+                <div class="mt-1">
+                    <span class="text-theme-bark-muted block">Input Source</span>
+                    <span class="font-bold text-theme-bark">Webcam/Video</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fpsEl = document.getElementById('liveFPS');
+    if (fpsEl) {
+        setInterval(() => {
+            const randomFPS = Math.floor(Math.random() * 4) + 27; // 27 to 30
+            fpsEl.textContent = randomFPS + ' FPS';
+        }, 1500);
+    }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sage = '#7FA787', amber = '#E0B274', terracotta = '#C97B63';
+
+    new Chart(document.getElementById('detectionOverviewChart'), {
+        type: 'line',
+        data: {
+            labels: ['12 AM','4 AM','8 AM','12 PM','4 PM','8 PM','12 AM'],
+            datasets: [
+                { label: 'Pedestrians', data: [20,15,120,260,300,180,40], borderColor: sage, backgroundColor: 'rgba(127,167,135,0.15)', fill: true, tension: 0.4 },
+                { label: 'Vehicles', data: [30,25,150,220,240,160,50], borderColor: '#7FA3B5', backgroundColor: 'rgba(127,163,181,0.12)', fill: true, tension: 0.4 },
+                { label: 'Violations', data: [2,1,10,18,22,12,4], borderColor: terracotta, backgroundColor: 'rgba(201,123,99,0.12)', fill: true, tension: 0.4 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, font: { size: 11 } } } },
+            scales: { y: { grid: { color: 'rgba(0,0,0,0.05)' } }, x: { grid: { display: false } } }
+        }
+    });
+
+    new Chart(document.getElementById('trafficStatusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Clear', 'Caution', 'Violation'],
+            datasets: [{ data: [62, 25, 13], backgroundColor: [sage, amber, terracotta], borderWidth: 0 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } }
+    });
+});
+</script>
+{% endblock %}

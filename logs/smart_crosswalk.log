@@ -1,0 +1,8 @@
+2026-07-30 21:26:07,678 INFO: Smart Crosswalk startup [in C:\Users\kooki\Desktop\july projects\smartn\app\utils\logger.py:16]
+2026-07-30 21:26:11,791 INFO: Smart Crosswalk startup [in C:\Users\kooki\Desktop\july projects\smartn\app\utils\logger.py:16]
+2026-07-30 21:26:43,476 INFO: Fallback mock login for non-existent user: kookie [in C:\Users\kooki\Desktop\july projects\smartn\app\controllers\auth.py:44]
+2026-07-30 21:26:43,488 INFO: User kookie accessed home. [in C:\Users\kooki\Desktop\july projects\smartn\app\controllers\main.py:109]
+2026-07-30 21:26:53,970 INFO: Live camera dashboard accessed [in C:\Users\kooki\Desktop\july projects\smartn\app\controllers\dashboard.py:47]
+2026-07-30 21:27:53,541 INFO: Live traffic dashboard accessed [in C:\Users\kooki\Desktop\july projects\smartn\app\controllers\dashboard.py:410]
+2026-07-30 21:28:09,485 INFO: Processing video: istockphoto-1166299674-640_adpp_is.mp4 [in C:\Users\kooki\Desktop\july projects\smartn\app\controllers\dashboard.py:94]
+2026-07-30 21:29:33,154 INFO: Analytics page accessed [in C:\Users\kooki\Desktop\july projects\smartn\app\controllers\dashboard.py:218]
